@@ -5,6 +5,53 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.2.0] - 2026-01-03
+
+### Added
+- **Edición Paramétrica Post-Creación**: Los canales ahora se pueden editar después de creados
+  - Nuevo operador `CADHY_OT_UpdateChannel` para regenerar canales existentes
+  - Panel Main detecta automáticamente si estás editando un canal existente
+  - Los parámetros se leen directamente del objeto seleccionado
+  - Botón "Update Channel" para regenerar con nuevos parámetros
+
+- **Auto-Updater Funcional**: Sistema de actualizaciones desde GitHub
+  - Verificación de nuevas versiones desde releases de GitHub
+  - Descarga automática del ZIP de la última versión
+  - Instalación con un clic (requiere reiniciar Blender)
+  - Panel de Updates completamente funcional
+
+### Fixed
+- **Topología de Canales Abiertos**: Corregido el bug crítico de generación de mesh
+  - Los canales TRAP/RECT ahora son abiertos (sin "techo")
+  - Solo se generan 3 caras por segmento: piso, pared izquierda, pared derecha
+  - Los canales circulares mantienen topología cerrada (tubería)
+
+- **Lining Thickness**: Implementación correcta del espesor de revestimiento
+  - Generación de perfiles interno y externo
+  - Conexión correcta de superficies internas (agua) y externas (terreno)
+  - Tapas en inicio y fin del canal
+  - Top caps conectando inner y outer en los bordes superiores
+
+### Improved
+- **Resolución Adaptativa en Curvas**: Mayor densidad de mesh donde hay más curvatura
+  - Algoritmo que detecta curvatura y ajusta el muestreo
+  - Factor de refinamiento hasta 3x en curvas cerradas
+  - Mejor calidad de mesh sin aumentar resolución global
+
+- **Panel Main Mejorado**:
+  - Modo Creación vs Modo Edición automático
+  - Muestra información del canal seleccionado (nombre, eje, longitud)
+  - Los parámetros son editables directamente desde el objeto
+
+### Technical
+- Nuevo archivo `op_update_channel.py` con operador de actualización
+- Función `update_mesh_geometry()` para actualizar meshes existentes
+- Función `generate_section_vertices_with_lining()` para perfiles con lining
+- Función `_sample_curve_adaptive()` para muestreo adaptativo
+- Integración completa del módulo `updater/` con el panel de Updates
+
+---
+
 ## [0.1.1] - 2026-01-03
 
 ### Fixed
@@ -75,12 +122,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## Roadmap
 
-### [0.2.0] - Planned
+### [0.3.0] - Planned
 - Transiciones de sección (A→B)
 - Bermas y cunetas compuestas
 - Obras: alcantarilla simple, disipador básico
 
-### [0.3.0] - Planned
+### [0.4.0] - Planned
 - Integración completa BlenderGIS
 - Terreno y alineamiento georeferenciado
 - Soporte CRS/EPSG

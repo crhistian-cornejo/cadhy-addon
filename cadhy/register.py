@@ -13,13 +13,20 @@ from .blender.operators.op_export_cfd import CADHY_OT_ExportCFD
 from .blender.operators.op_export_report import CADHY_OT_ExportReport
 from .blender.operators.op_generate_sections import CADHY_OT_GenerateSections
 from .blender.operators.op_setup_render import CADHY_OT_SetupRender
+from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
 from .blender.operators.op_validate_mesh import CADHY_OT_ValidateMesh
 from .blender.panels.pt_cfd import CADHY_PT_CFD
 from .blender.panels.pt_export import CADHY_OT_ExportAll, CADHY_PT_Export
 from .blender.panels.pt_main import CADHY_PT_Main
 from .blender.panels.pt_render import CADHY_OT_ToggleShading, CADHY_PT_Render
 from .blender.panels.pt_sections import CADHY_PT_Sections
-from .blender.panels.pt_updates import CADHY_OT_CheckUpdates, CADHY_OT_PrintSystemInfo, CADHY_PT_Updates
+from .blender.panels.pt_updates import (
+    CADHY_OT_CheckUpdates,
+    CADHY_OT_DownloadUpdate,
+    CADHY_OT_InstallUpdate,
+    CADHY_OT_PrintSystemInfo,
+    CADHY_PT_Updates,
+)
 from .blender.properties.object_props import CADHYCFDSettings, CADHYChannelSettings
 from .blender.properties.scene_props import CADHYSceneSettings
 
@@ -31,6 +38,7 @@ classes = (
     CADHYCFDSettings,
     # Operators
     CADHY_OT_BuildChannel,
+    CADHY_OT_UpdateChannel,
     CADHY_OT_BuildCFDDomain,
     CADHY_OT_GenerateSections,
     CADHY_OT_ExportCFD,
@@ -41,6 +49,8 @@ classes = (
     CADHY_OT_DevReload,
     CADHY_OT_ExportAll,
     CADHY_OT_CheckUpdates,
+    CADHY_OT_DownloadUpdate,
+    CADHY_OT_InstallUpdate,
     CADHY_OT_PrintSystemInfo,
     CADHY_OT_ToggleShading,
     # Panels

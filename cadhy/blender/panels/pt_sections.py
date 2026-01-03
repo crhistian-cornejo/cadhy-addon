@@ -85,7 +85,9 @@ class CADHY_PT_Sections(Panel):
         box.label(text="Export", icon="EXPORT")
 
         # Check if sections exist for enabling export
-        has_sections = "CADHY_Sections" in bpy.data.collections and len(bpy.data.collections["CADHY_Sections"].objects) > 0
+        has_sections = (
+            "CADHY_Sections" in bpy.data.collections and len(bpy.data.collections["CADHY_Sections"].objects) > 0
+        )
 
         row = box.row(align=True)
         row.enabled = has_sections

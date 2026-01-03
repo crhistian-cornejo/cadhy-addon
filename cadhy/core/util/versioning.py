@@ -7,8 +7,8 @@ import sys
 from typing import Optional, Tuple
 
 # CADHY Version
-CADHY_VERSION = (0, 1, 1)
-CADHY_VERSION_STRING = "0.1.1"
+CADHY_VERSION = (0, 2, 0)
+CADHY_VERSION_STRING = "0.2.0"
 
 # Minimum supported Blender version
 MIN_BLENDER_VERSION = (4, 1, 0)
