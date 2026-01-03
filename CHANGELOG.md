@@ -5,6 +5,79 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.1] - 2026-01-03
+
+### Fixed
+
+- **Critical: Update Channel Edit Mode Error**: Fixed `Cannot add vertices in edit mode` error
+  - Channel updates now properly switch to object mode before modifying mesh
+  - Allows repeated parameter changes without errors
+
+- **Geometry Distortion at Curve Corners**: Implemented Rotation Minimizing Frames (RMF)
+  - Previous approach caused section twisting at sharp corners (e.g., 90° bends)
+  - New RMF algorithm propagates the normal along the curve smoothly
+  - Eliminates geometry flipping and distortion at direction changes
+  - Consistent section orientation throughout the entire channel
+
+### Technical
+
+- New `_sample_with_rmf()` function for consistent frame calculation
+- New `_get_curve_polyline()` helper for curve vertex extraction
+- New `_calculate_curvatures()` for curvature analysis
+- Both uniform and adaptive sampling now use RMF for consistency
+
+---
+
+## [0.3.0] - 2026-01-03
+
+### Added
+
+- **AddonPreferences Panel**: Nueva configuración global accesible desde Edit > Preferences > Add-ons
+  - Nivel de log configurable (DEBUG, INFO, WARNING, ERROR)
+  - Opción de logging a archivo (~/.cadhy/cadhy.log)
+  - Modo desarrollador con recarga de scripts
+  - Path para solver CFD externo
+  - Unidades por defecto y formato de exportación
+  - Configuración de auto-updates
+
+- **Enhanced Logging System**: Sistema de logging profesional similar a BlenderGIS
+  - Rotación automática de archivos de log (máx 500KB, 3 backups)
+  - Logs a ~/.cadhy/cadhy.log
+  - Botón para abrir archivo de log desde preferencias
+  - Timing de operaciones en logs
+
+- **Global Exception Hook**: Captura automática de excepciones no manejadas
+  - Las excepciones de CADHY se loggean automáticamente a archivo
+  - Ayuda en debugging y reporte de bugs
+
+- **Blender Version Validation**: Verificación de versión mínima al cargar
+  - Error claro si Blender < 4.1.0
+
+- **Keyboard Shortcuts**: Atajos de teclado para operaciones principales
+  - Ctrl+Shift+B: Build Channel
+  - Ctrl+Shift+U: Update Channel
+  - Ctrl+Shift+D: Build CFD Domain
+  - Ctrl+Shift+Alt+S: Generate Sections
+
+- **Progress Indicators**: Indicadores de progreso para operaciones largas
+  - Barra de progreso en Build Channel y CFD Domain
+  - Mejor feedback visual durante generación de geometría
+
+### Improved
+
+- **PRD.md**: Documento limpiado y reestructurado
+- **Code Architecture**: Mejor separación de responsabilidades
+- **Error Handling**: Manejo de errores más robusto con logging automático
+
+### Technical
+
+- Nuevo archivo `cadhy/blender/preferences.py`
+- Operador `CADHY_OT_OpenLogFile` para abrir logs
+- Función `reconfigure_from_preferences()` para reconfigurar logging
+- Keyboard shortcuts registrados en `register.py`
+
+---
+
 ## [0.2.4] - 2026-01-03
 
 ### Improved

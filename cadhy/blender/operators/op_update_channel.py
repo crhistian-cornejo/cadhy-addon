@@ -3,6 +3,7 @@ Update Channel Operator
 Operator to regenerate channel mesh from stored parameters.
 """
 
+import bpy
 from bpy.types import Operator
 
 from ...core.geom.build_channel import build_channel_mesh, get_curve_length, update_mesh_geometry
@@ -15,7 +16,7 @@ class CADHY_OT_UpdateChannel(Operator):
 
     bl_idname = "cadhy.update_channel"
     bl_label = "Update Channel"
-    bl_description = "Regenerate channel mesh using current parameters"
+    bl_description = "Regenerate channel mesh using current parameters (Ctrl+Shift+U)"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -46,6 +47,11 @@ class CADHY_OT_UpdateChannel(Operator):
         if ch.source_axis.type != "CURVE":
             self.report({"ERROR"}, "Source axis is not a curve")
             return {"CANCELLED"}
+
+        # CRITICAL: Ensure we're in object mode before modifying mesh
+        # mesh.from_pydata() fails if object is in edit mode
+        if obj.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
 
         with OperationLogger("Update Channel", self) as logger:
             # Map section type string to enum

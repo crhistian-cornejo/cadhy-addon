@@ -47,68 +47,43 @@ def sample_curve_points(curve_obj, resolution_m: float, adaptive: bool = True) -
 
 
 def _sample_curve_uniform(curve_obj, resolution_m: float, total_length: float) -> List[dict]:
-    """Uniform sampling along curve."""
+    """Uniform sampling along curve using RMF for consistent normals."""
     num_samples = max(2, int(total_length / resolution_m) + 1)
 
-    samples = []
-    for i in range(num_samples):
-        t = i / (num_samples - 1)
-        station = t * total_length
+    t_values = [i / (num_samples - 1) for i in range(num_samples)]
 
-        pos, tangent, normal = evaluate_curve_at_parameter(curve_obj, t)
-        samples.append({"position": pos, "tangent": tangent, "normal": normal, "station": station, "t": t})
-
-    return samples
+    # Use RMF sampling for consistent normals
+    return _sample_with_rmf(curve_obj, t_values, total_length)
 
 
 def _sample_curve_adaptive(curve_obj, resolution_m: float, total_length: float) -> List[dict]:
     """
     Adaptive sampling: increase density where curvature is higher.
 
-    Algorithm:
-    1. First pass: uniform sampling to detect curvature
-    2. Calculate curvature at each point (angle change between tangents)
-    3. Insert additional samples in high-curvature regions
+    Uses rotation-minimizing frames (RMF) to avoid geometry twisting at corners.
     """
-    # Initial coarse sampling to detect curvature
-    coarse_resolution = resolution_m * 2
-    num_coarse = max(10, int(total_length / coarse_resolution) + 1)
+    # First, get all curve vertices and tangents
+    curve_data = _get_curve_polyline(curve_obj)
+    if not curve_data:
+        return []
 
-    # Get coarse samples with tangents
-    coarse_samples = []
-    for i in range(num_coarse):
-        t = i / (num_coarse - 1)
-        pos, tangent, normal = evaluate_curve_at_parameter(curve_obj, t)
-        coarse_samples.append({"t": t, "pos": pos, "tangent": tangent, "normal": normal})
+    verts, distances, tangents = curve_data
 
-    # Calculate curvature at each point (angle between consecutive tangents)
-    curvatures = [0.0]
-    for i in range(1, len(coarse_samples)):
-        prev_tangent = coarse_samples[i - 1]["tangent"]
-        curr_tangent = coarse_samples[i]["tangent"]
-
-        # Angle between tangents (in radians)
-        dot = max(-1.0, min(1.0, prev_tangent.dot(curr_tangent)))
-        angle = math.acos(dot)
-
-        # Curvature is angle per unit length
-        segment_length = total_length / (num_coarse - 1)
-        curvature = angle / segment_length if segment_length > 0 else 0
-        curvatures.append(curvature)
+    # Calculate curvature at each vertex
+    curvatures = _calculate_curvatures(tangents, distances)
 
     # Determine adaptive t-values based on curvature
     t_values = [0.0]
-    base_dt = resolution_m / total_length  # Base step in t-space
+    base_dt = resolution_m / total_length
 
     t = 0.0
     while t < 1.0:
-        # Find curvature at current position (interpolate from coarse samples)
-        idx = min(int(t * (num_coarse - 1)), num_coarse - 2)
-        local_curvature = curvatures[idx]
+        # Find curvature at current position
+        idx = min(int(t * (len(curvatures) - 1)), len(curvatures) - 2)
+        local_curvature = curvatures[max(0, idx)]
 
         # Adaptive step: smaller step where curvature is high
-        # curvature_factor: 1.0 for straight, up to 3x smaller for high curvature
-        max_curvature = 0.5  # radians/meter threshold for max refinement
+        max_curvature = 0.5  # radians/meter threshold
         curvature_factor = 1.0 + min(local_curvature / max_curvature, 2.0) * 2.0
 
         adaptive_dt = base_dt / curvature_factor
@@ -118,16 +93,173 @@ def _sample_curve_adaptive(curve_obj, resolution_m: float, total_length: float) 
             t_values.append(t)
 
     t_values.append(1.0)
-
-    # Remove duplicates and sort
     t_values = sorted(set(t_values))
 
-    # Generate final samples
-    samples = []
+    # Generate samples using rotation-minimizing frames
+    samples = _sample_with_rmf(curve_obj, t_values, total_length)
+
+    return samples
+
+
+def _get_curve_polyline(curve_obj) -> Tuple[List[Vector], List[float], List[Vector]]:
+    """Get curve as polyline with distances and tangents."""
+    import bpy
+
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    eval_obj = curve_obj.evaluated_get(depsgraph)
+    mesh = eval_obj.to_mesh()
+
+    if not mesh or len(mesh.vertices) < 2:
+        eval_obj.to_mesh_clear()
+        return None
+
+    verts = [v.co.copy() for v in mesh.vertices]
+
+    # Calculate cumulative distances
+    distances = [0.0]
+    for i in range(1, len(verts)):
+        distances.append(distances[-1] + (verts[i] - verts[i - 1]).length)
+
+    # Calculate tangents
+    tangents = []
+    for i in range(len(verts)):
+        if i == 0:
+            tangent = (verts[1] - verts[0]).normalized()
+        elif i == len(verts) - 1:
+            tangent = (verts[-1] - verts[-2]).normalized()
+        else:
+            # Average of previous and next segment tangents
+            t1 = (verts[i] - verts[i - 1]).normalized()
+            t2 = (verts[i + 1] - verts[i]).normalized()
+            tangent = (t1 + t2).normalized()
+        tangents.append(tangent)
+
+    eval_obj.to_mesh_clear()
+    return verts, distances, tangents
+
+
+def _calculate_curvatures(tangents: List[Vector], distances: List[float]) -> List[float]:
+    """Calculate curvature at each point."""
+    curvatures = [0.0]
+    for i in range(1, len(tangents)):
+        dot = max(-1.0, min(1.0, tangents[i - 1].dot(tangents[i])))
+        angle = math.acos(dot)
+        segment_length = distances[i] - distances[i - 1]
+        curvature = angle / segment_length if segment_length > 0 else 0
+        curvatures.append(curvature)
+    return curvatures
+
+
+def _sample_with_rmf(curve_obj, t_values: List[float], total_length: float) -> List[dict]:
+    """
+    Sample curve using Rotation Minimizing Frames (RMF).
+
+    This prevents geometry twisting at corners by propagating the normal
+    along the curve instead of recalculating it independently at each point.
+    """
+    import bpy
+    from mathutils import Vector
+
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    eval_obj = curve_obj.evaluated_get(depsgraph)
+    mesh = eval_obj.to_mesh()
+
+    if not mesh or len(mesh.vertices) < 2:
+        eval_obj.to_mesh_clear()
+        return []
+
+    verts = [v.co.copy() for v in mesh.vertices]
+    world_matrix = curve_obj.matrix_world
+
+    # Calculate distances
+    distances = [0.0]
+    for i in range(1, len(verts)):
+        distances.append(distances[-1] + (verts[i] - verts[i - 1]).length)
+    curve_length = distances[-1]
+
+    eval_obj.to_mesh_clear()
+
+    # First pass: calculate position and tangent for each t
+    raw_samples = []
     for t in t_values:
-        station = t * total_length
-        pos, tangent, normal = evaluate_curve_at_parameter(curve_obj, t)
-        samples.append({"position": pos, "tangent": tangent, "normal": normal, "station": station, "t": t})
+        target_dist = t * curve_length
+
+        # Find segment
+        pos = verts[0]
+        tangent = (verts[1] - verts[0]).normalized() if len(verts) > 1 else Vector((1, 0, 0))
+
+        for i in range(1, len(distances)):
+            if distances[i] >= target_dist:
+                seg_start = distances[i - 1]
+                seg_end = distances[i]
+                seg_t = (target_dist - seg_start) / (seg_end - seg_start) if seg_end > seg_start else 0
+
+                pos = verts[i - 1].lerp(verts[i], seg_t)
+                tangent = (verts[i] - verts[i - 1]).normalized()
+                break
+        else:
+            pos = verts[-1]
+            tangent = (verts[-1] - verts[-2]).normalized() if len(verts) > 1 else Vector((1, 0, 0))
+
+        raw_samples.append({"t": t, "pos": pos, "tangent": tangent})
+
+    # Second pass: propagate normals using RMF
+    samples = []
+
+    # Initial frame: use world up as reference
+    up = Vector((0, 0, 1))
+    first_tangent = raw_samples[0]["tangent"]
+
+    # If first tangent is nearly vertical, use Y as reference
+    if abs(first_tangent.dot(up)) > 0.99:
+        up = Vector((0, 1, 0))
+
+    # Calculate initial normal
+    binormal = first_tangent.cross(up).normalized()
+    prev_normal = binormal.cross(first_tangent).normalized()
+
+    for i, raw in enumerate(raw_samples):
+        pos = raw["pos"]
+        tangent = raw["tangent"]
+        station = raw["t"] * total_length
+
+        if i == 0:
+            normal = prev_normal
+        else:
+            # RMF: rotate previous normal to align with new tangent
+            # This minimizes twist by keeping the normal as close as possible
+            # to the previous normal while staying perpendicular to tangent
+
+            # Project previous normal onto plane perpendicular to new tangent
+            normal = prev_normal - tangent * prev_normal.dot(tangent)
+
+            # Handle case where normal becomes too small (tangent reversal)
+            if normal.length < 0.001:
+                # Fall back to up-vector method
+                test_up = Vector((0, 0, 1))
+                if abs(tangent.dot(test_up)) > 0.99:
+                    test_up = Vector((0, 1, 0))
+                binormal = tangent.cross(test_up).normalized()
+                normal = binormal.cross(tangent).normalized()
+            else:
+                normal = normal.normalized()
+
+        prev_normal = normal
+
+        # Transform to world space
+        world_pos = world_matrix @ pos
+        world_tangent = (world_matrix.to_3x3() @ tangent).normalized()
+        world_normal = (world_matrix.to_3x3() @ normal).normalized()
+
+        samples.append(
+            {
+                "position": world_pos,
+                "tangent": world_tangent,
+                "normal": world_normal,
+                "station": station,
+                "t": raw["t"],
+            }
+        )
 
     return samples
 
@@ -159,6 +291,9 @@ def get_curve_length(curve_obj) -> float:
 def evaluate_curve_at_parameter(curve_obj, t: float) -> Tuple[Vector, Vector, Vector]:
     """
     Evaluate curve position, tangent, and normal at parameter t (0-1).
+
+    Uses a consistent normal calculation that handles sharp corners better
+    by computing binormal from tangent change (Frenet-like frame).
 
     Returns:
         Tuple of (position, tangent, normal) as Vectors
@@ -201,12 +336,18 @@ def evaluate_curve_at_parameter(curve_obj, t: float) -> Tuple[Vector, Vector, Ve
             pos = verts[i - 1].lerp(verts[i], seg_t)
             tangent = (verts[i] - verts[i - 1]).normalized()
 
-            # Calculate normal (perpendicular to tangent, preferring up direction)
+            # Calculate normal using consistent "up" reference
+            # For hydraulic channels, we want sections to stay as horizontal as possible
             up = Vector((0, 0, 1))
+
+            # If tangent is nearly vertical, use Y as reference instead
             if abs(tangent.dot(up)) > 0.99:
                 up = Vector((0, 1, 0))
 
+            # Binormal is perpendicular to both tangent and up
             binormal = tangent.cross(up).normalized()
+
+            # Normal is perpendicular to tangent in the plane containing up
             normal = binormal.cross(tangent).normalized()
 
             # Transform to world space

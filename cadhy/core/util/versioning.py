@@ -6,15 +6,16 @@ Version information and compatibility checking.
 import sys
 from typing import Optional, Tuple
 
-# CADHY Version
-CADHY_VERSION = (0, 2, 4)
-CADHY_VERSION_STRING = "0.2.4"
+# CADHY Version - Single source of truth
+# This should match bl_info["version"] in __init__.py and pyproject.toml
+CADHY_VERSION = (0, 3, 1)
+CADHY_VERSION_STRING = ".".join(str(v) for v in CADHY_VERSION)
 
 # Minimum supported Blender version
 MIN_BLENDER_VERSION = (4, 1, 0)
 
 # Recommended Blender version
-RECOMMENDED_BLENDER_VERSION = (4, 1, 0)
+RECOMMENDED_BLENDER_VERSION = (4, 2, 0)
 
 
 def get_version_string() -> str:
