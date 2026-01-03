@@ -5,6 +5,39 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.1.1] - 2026-01-03
+
+### Fixed
+- **build_channel.py**: Removed unused variable assignment that could cause confusion
+- **pt_sections.py**: Improved error handling with specific exception types instead of generic catch-all
+
+### Improved
+- **Main Panel**:
+  - Added channel existence indicator with checkmark icon
+  - Button now shows "Update Channel" when channel already exists
+  - Added resolution warning for long curves (>100m) with low resolution (<0.5m)
+  - Better visual feedback with calculated values display
+
+- **CFD Panel**:
+  - Added CFD domain status indicator showing if domain exists
+  - Button changes to "Update CFD Domain" when domain already exists
+  - Added water level validation warning when level exceeds channel height
+  - Warning when water level is near maximum (>95% of height)
+  - Validate button disabled when no mesh available
+
+- **Sections Panel**:
+  - Export buttons (CSV/JSON) now disabled when no sections exist
+  - Added informative message "Generate sections first" when empty
+  - Better curve length display with proper icon
+  - Specific error messages for different failure cases
+
+### Technical
+- All panels now import `bpy` for object existence checks
+- Consistent use of icons across all panels (CHECKMARK, ERROR, INFO)
+- Better UX with contextual button labels
+
+---
+
 ## [0.1.0] - 2026-01-03
 
 ### Added
