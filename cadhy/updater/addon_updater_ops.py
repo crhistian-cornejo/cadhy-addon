@@ -1,9 +1,12 @@
 """
 Addon Updater Operators
 Blender operators for update functionality.
+
+Note: These operators are NOT registered by this module.
+Registration is handled by register.py using operators from pt_updates.py.
+This file is kept for reference/legacy compatibility.
 """
 
-import bpy
 from bpy.types import Operator
 
 from ..core.util.versioning import CADHY_VERSION_STRING
