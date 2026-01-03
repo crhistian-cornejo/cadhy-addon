@@ -6,7 +6,7 @@ Toolkit for parametric modeling of hydraulic infrastructure within Blender.
 bl_info = {
     "name": "CADHY",
     "author": "CADHY Team",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar > CADHY",
     "description": "Parametric modeling toolkit for hydraulic infrastructure and CFD domain generation",
