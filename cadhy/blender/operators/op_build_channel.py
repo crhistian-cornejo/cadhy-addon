@@ -3,7 +3,6 @@ Build Channel Operator
 Operator to generate channel mesh from curve axis.
 """
 
-import bpy
 from bpy.types import Operator
 
 from ...core.geom.build_channel import build_channel_mesh, create_channel_object, get_curve_length
