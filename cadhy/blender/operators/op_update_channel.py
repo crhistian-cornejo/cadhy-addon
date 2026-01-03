@@ -87,4 +87,27 @@ class CADHY_OT_UpdateChannel(Operator):
 
             logger.set_success(f"Channel updated: {len(vertices)} vertices, {len(faces)} faces")
 
+            # Update linked CFD domains
+            self._update_linked_cfd_domains(obj, context)
+
         return {"FINISHED"}
+
+    def _update_linked_cfd_domains(self, channel_obj, context):
+        """Update all CFD domains linked to this channel."""
+        updated_count = 0
+        for obj in bpy.data.objects:
+            if obj.type == "MESH":
+                cfd = getattr(obj, "cadhy_cfd", None)
+                if cfd and cfd.is_cadhy_object and cfd.source_channel == channel_obj:
+                    # Update this CFD domain
+                    original_active = context.view_layer.objects.active
+                    context.view_layer.objects.active = obj
+                    try:
+                        bpy.ops.cadhy.update_cfd_domain()
+                        updated_count += 1
+                    except Exception:
+                        pass  # Skip if update fails
+                    context.view_layer.objects.active = original_active
+
+        if updated_count > 0:
+            self.report({"INFO"}, f"Also updated {updated_count} linked CFD domain(s)")

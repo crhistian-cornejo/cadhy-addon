@@ -467,6 +467,16 @@ def generate_section_vertices(params: ChannelParams, include_outer: bool = False
     return inner
 
 
+def _is_curve_cyclic(curve_obj) -> bool:
+    """Check if any spline in the curve is cyclic (closed loop)."""
+    if curve_obj.type != "CURVE":
+        return False
+    for spline in curve_obj.data.splines:
+        if spline.use_cyclic_u:
+            return True
+    return False
+
+
 def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
     """
     Build channel mesh geometry from curve and parameters.
@@ -479,10 +489,20 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
         Tuple of (vertices, faces) for mesh creation
     """
 
+    # Check if curve is cyclic (closed loop)
+    is_cyclic = _is_curve_cyclic(curve_obj)
+
     # Sample curve
     samples = sample_curve_points(curve_obj, params.resolution_m)
     if len(samples) < 2:
         return [], []
+
+    # For cyclic curves, remove duplicate endpoint if it's very close to start
+    if is_cyclic and len(samples) > 2:
+        start_pos = samples[0]["position"]
+        end_pos = samples[-1]["position"]
+        if (end_pos - start_pos).length < params.resolution_m * 0.5:
+            samples = samples[:-1]  # Remove last point (it's a duplicate of first)
 
     # Generate section profiles (inner and outer for lining)
     inner_verts, outer_verts = generate_section_vertices_with_lining(params)
@@ -521,9 +541,14 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
     # Determine face generation based on section type
     is_open_channel = params.section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR)
 
-    for i in range(num_samples - 1):
+    # For cyclic curves, we loop back to connect last section to first
+    num_connections = num_samples if is_cyclic else num_samples - 1
+
+    for i in range(num_connections):
         base_current = i * total_verts_per_section
-        base_next = (i + 1) * total_verts_per_section
+        # For cyclic: last section connects to first (index 0)
+        next_idx = (i + 1) % num_samples if is_cyclic else i + 1
+        base_next = next_idx * total_verts_per_section
 
         if is_open_channel:
             # OPEN CHANNEL with lining
@@ -593,7 +618,8 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
                     faces.append((v1, v2, v3, v4))
 
     # Add end caps for lining (close the start and end of the channel)
-    if has_lining:
+    # Skip end caps for cyclic curves - they form a complete loop
+    if has_lining and not is_cyclic:
         _add_lining_end_caps(faces, num_samples, total_verts_per_section, num_inner_verts, is_open_channel)
 
     return vertices, faces

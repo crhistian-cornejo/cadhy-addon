@@ -3,7 +3,6 @@ Channel Info Panel
 Displays real-time geometric and hydraulic information for selected CADHY channels.
 """
 
-import bpy
 from bpy.types import Operator, Panel
 
 
@@ -181,7 +180,6 @@ class CADHY_PT_ChannelInfo(Panel):
         if ch.slope_avg > 0:
             col.label(text=f"Slope: {ch.slope_percent:.3f} %")
             col.label(text=f"Slope: {ch.slope_avg:.6f} m/m")
-            col.label(text=f"Slope: 1:{1 / ch.slope_avg:.0f}" if ch.slope_avg > 0 else "Slope: --")
         else:
             col.label(text="Slope: -- (refresh)")
 
@@ -261,20 +259,3 @@ class CADHY_PT_ChannelInfo(Panel):
                 row.label(text="Not Watertight", icon="X")
         else:
             col.label(text="Click Refresh to calculate")
-
-
-# Registration
-classes = (
-    CADHY_OT_RefreshChannelInfo,
-    CADHY_PT_ChannelInfo,
-)
-
-
-def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
-
-
-def unregister():
-    for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)

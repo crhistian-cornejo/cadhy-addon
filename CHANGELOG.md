@@ -5,6 +5,46 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.3] - 2026-01-03
+
+### Fixed
+
+- **Critical: Addon Registration Error**: Renamed `register.py` to `registration.py`
+  - Fixed `'function' object has no attribute 'register'` error
+  - Prevents name collision between module and function
+  - Addon now loads correctly in Blender
+
+- **CFD Domain BMesh Error**: Added `ensure_lookup_table()` after triangulation
+  - Fixed `BMElemSeq[index]: outdated internal index table` crash
+
+- **Cyclic Curve Geometry**: Fixed geometry crossing at closed curve corners
+  - Detects cyclic splines and removes duplicate endpoint
+  - Properly connects last section to first for closed loops
+
+- **Channel Info Slope Format**: Removed confusing `1:N` slope format
+  - Only shows slope as `%` and `m/m`
+
+### Added
+
+- **Parametric CFD Domain**: CFD domains now update with their source channel
+  - New `CADHY_OT_UpdateCFDDomain` operator
+  - CFD domain stores link to source channel
+  - When channel is updated, linked CFD domains auto-update
+
+- **Station Markers**: Visual chainage markers along the axis curve
+  - Shows station in 0+000.00 format (km+meters)
+  - INLET and OUTLET labels at endpoints
+  - Create/Clear buttons in main panel
+
+### Changed
+
+- **CFD Domain Simplified**: Now follows channel geometry exactly
+  - Removed Fill Mode option (always uses full channel height)
+  - Removed inlet/outlet extensions (follows axis exactly)
+  - Fluid volume matches channel precisely
+
+---
+
 ## [0.3.2] - 2026-01-03
 
 ### Added

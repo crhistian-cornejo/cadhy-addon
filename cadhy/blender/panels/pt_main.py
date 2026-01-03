@@ -107,6 +107,15 @@ class CADHY_PT_Main(Panel):
             row = layout.row(align=True)
             row.operator("cadhy.build_cfd_domain", text="Build CFD Domain", icon="MOD_FLUIDSIM")
 
+        layout.separator()
+
+        # Station Markers
+        box = layout.box()
+        box.label(text="Station Markers", icon="FONT_DATA")
+        row = box.row(align=True)
+        row.operator("cadhy.create_station_markers", text="Create Markers", icon="ADD")
+        row.operator("cadhy.clear_station_markers", text="Clear", icon="X")
+
     def draw_edit_mode(self, context, layout, ch):
         """Draw UI for editing an existing channel."""
         obj = context.active_object

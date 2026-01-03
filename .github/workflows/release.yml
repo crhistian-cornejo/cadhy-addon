@@ -39,6 +39,34 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
       
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Extracting changelog for v$VERSION"
+          
+          # Extract the section for this version from CHANGELOG.md
+          # Matches from "## [X.Y.Z]" until the next "## [" or "---"
+          CHANGELOG=$(awk -v ver="$VERSION" '
+            BEGIN { found=0; printing=0 }
+            /^## \[/ {
+              if (printing) exit
+              if (index($0, "[" ver "]") > 0) { found=1; printing=1; next }
+            }
+            /^---$/ { if (printing) exit }
+            printing { print }
+          ' CHANGELOG.md)
+          
+          if [ -z "$CHANGELOG" ]; then
+            echo "No changelog entry found for v$VERSION, using default"
+            CHANGELOG="Release v$VERSION"
+          fi
+          
+          # Save to file for multi-line handling
+          echo "$CHANGELOG" > release_notes.md
+          echo "Release notes extracted:"
+          cat release_notes.md
+      
       - name: Build addon ZIP
         run: |
           python scripts/build.py --output dist/
@@ -55,7 +83,7 @@ jobs:
           name: CADHY v${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body_path: release_notes.md
           files: |
             dist/cadhy-*.zip
         env:

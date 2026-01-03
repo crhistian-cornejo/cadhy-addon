@@ -147,6 +147,7 @@ class CADHY_OT_BuildCFDDomain(Operator):
                 wm.progress_update(90)
                 cfd_settings = domain_obj.cadhy_cfd
                 cfd_settings.source_axis = axis_obj
+                cfd_settings.source_channel = channel_obj  # Link to channel for parametric updates
                 cfd_settings.enabled = True
                 cfd_settings.inlet_extension_m = cfd_params.inlet_extension_m
                 cfd_settings.outlet_extension_m = cfd_params.outlet_extension_m

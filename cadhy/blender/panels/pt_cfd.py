@@ -1,6 +1,7 @@
 """
 CFD Panel
 Panel for CFD domain generation and validation.
+CFD domain follows the channel exactly - no fill mode or extension options.
 """
 
 import bpy
@@ -42,39 +43,25 @@ class CADHY_PT_CFD(Panel):
         if cfd_domain_exists:
             row = status_box.row()
             row.label(text=f"Domain: {cfd_domain_name}", icon="CHECKMARK")
+
+            # Show linked channel info
+            cfd_obj = bpy.data.objects.get(cfd_domain_name)
+            if cfd_obj and hasattr(cfd_obj, "cadhy_cfd"):
+                cfd = cfd_obj.cadhy_cfd
+                if cfd.source_channel:
+                    row = status_box.row()
+                    row.label(text=f"Channel: {cfd.source_channel.name}", icon="LINKED")
         else:
             row = status_box.row()
             row.label(text="No CFD domain created", icon="INFO")
 
-        layout.separator()
-
-        # Fill Mode
-        box = layout.box()
-        box.label(text="Fill Mode", icon="MOD_FLUIDSIM")
-        box.prop(settings, "cfd_fill_mode", text="")
-
-        if settings.cfd_fill_mode == "WATER_LEVEL":
-            col = box.column(align=True)
-            col.prop(settings, "cfd_water_level", text="Water Level")
-
-            # Warning if water level exceeds channel height
-            if settings.cfd_water_level > settings.height:
-                row = box.row()
-                row.alert = True
-                row.label(text="Water level > Channel height!", icon="ERROR")
-            elif settings.cfd_water_level > settings.height * 0.95:
-                row = box.row()
-                row.label(text="Water level near max", icon="INFO")
-
-        layout.separator()
-
-        # Extensions
-        box = layout.box()
-        box.label(text="Flow Extensions", icon="ARROW_LEFTRIGHT")
-
-        col = box.column(align=True)
-        col.prop(settings, "cfd_inlet_extension", text="Inlet Extension")
-        col.prop(settings, "cfd_outlet_extension", text="Outlet Extension")
+        # Info about CFD domain
+        info_box = layout.box()
+        info_box.label(text="CFD Domain Info", icon="INFO")
+        col = info_box.column(align=True)
+        col.label(text="Fluid volume follows channel exactly")
+        col.label(text="Height = Design water depth")
+        col.label(text="Updates when channel updates")
 
         layout.separator()
 
@@ -82,7 +69,7 @@ class CADHY_PT_CFD(Panel):
         row = layout.row(align=True)
         row.scale_y = 1.5
         if cfd_domain_exists:
-            row.operator("cadhy.build_cfd_domain", text="Update CFD Domain", icon="FILE_REFRESH")
+            row.operator("cadhy.build_cfd_domain", text="Rebuild CFD Domain", icon="FILE_REFRESH")
         else:
             row.operator("cadhy.build_cfd_domain", text="Build CFD Domain", icon="MOD_FLUIDSIM")
 

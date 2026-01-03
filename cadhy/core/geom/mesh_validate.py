@@ -165,6 +165,10 @@ def check_self_intersections(obj, sample_count: int = 1000) -> int:
     bm.from_mesh(mesh)
     bmesh.ops.triangulate(bm, faces=bm.faces)
 
+    # CRITICAL: Update lookup table after triangulation changes face indices
+    bm.faces.ensure_lookup_table()
+    bm.verts.ensure_lookup_table()
+
     bvh = BVHTree.FromBMesh(bm)
 
     # Check for overlaps
@@ -173,7 +177,7 @@ def check_self_intersections(obj, sample_count: int = 1000) -> int:
     # Filter out adjacent face pairs
     self_intersections = 0
     for i, j in overlaps:
-        if i != j:
+        if i != j and i < len(bm.faces) and j < len(bm.faces):
             face_i = bm.faces[i]
             face_j = bm.faces[j]
 

@@ -1,6 +1,7 @@
 """
 Build CFD Domain Module
 Core geometry generation for CFD fluid domains.
+CFD domain follows exactly the channel geometry (full section, no extensions).
 """
 
 import math
@@ -8,27 +9,23 @@ from typing import Dict, List, Tuple
 
 from mathutils import Vector
 
-from ..model.cfd_params import CFDParams, FillMode, PatchType
+from ..model.cfd_params import PatchType
 from ..model.channel_params import ChannelParams, SectionType
-from .build_channel import sample_curve_points
+from .build_channel import _is_curve_cyclic, sample_curve_points
 
 
-def generate_cfd_section_vertices(channel_params: ChannelParams, cfd_params: CFDParams) -> List[Tuple[float, float]]:
+def generate_cfd_section_vertices(channel_params: ChannelParams) -> List[Tuple[float, float]]:
     """
-    Generate 2D section vertices for CFD domain (fluid volume).
+    Generate 2D section vertices for CFD domain (full fluid volume).
 
     Args:
         channel_params: Channel geometry parameters
-        cfd_params: CFD domain parameters
 
     Returns:
         List of (x, y) tuples for fluid section profile
     """
-    # Determine water height
-    if cfd_params.fill_mode == FillMode.FULL:
-        water_height = channel_params.total_height
-    else:
-        water_height = min(cfd_params.water_level_m, channel_params.total_height)
+    # Always use full height (design water depth = channel height)
+    water_height = channel_params.height  # Not total_height, just the flow depth
 
     if channel_params.section_type == SectionType.TRAPEZOIDAL:
         bw = channel_params.bottom_width
@@ -55,118 +52,54 @@ def generate_cfd_section_vertices(channel_params: ChannelParams, cfd_params: CFD
     elif channel_params.section_type == SectionType.CIRCULAR:
         r = channel_params.bottom_width / 2
         segments = 32
-
-        if cfd_params.fill_mode == FillMode.FULL or water_height >= channel_params.bottom_width:
-            # Full circle
-            verts = []
-            for i in range(segments):
-                angle = 2 * math.pi * i / segments
-                x = r * math.cos(angle)
-                y = r * math.sin(angle) + r
-                verts.append((x, y))
-            return verts
-        else:
-            # Partial fill - circular segment
-            # Calculate angle for water level
-            if water_height <= 0:
-                return []
-
-            theta = 2 * math.acos((r - water_height) / r)
-            start_angle = math.pi + (math.pi - theta / 2)
-            end_angle = math.pi - (math.pi - theta / 2)
-
-            verts = []
-            for i in range(segments + 1):
-                angle = start_angle + (end_angle - start_angle) * i / segments
-                x = r * math.cos(angle)
-                y = r * math.sin(angle) + r
-                verts.append((x, y))
-
-            return verts
+        # Full circle for pipe flow
+        verts = []
+        for i in range(segments):
+            angle = 2 * math.pi * i / segments
+            x = r * math.cos(angle)
+            y = r * math.sin(angle) + r
+            verts.append((x, y))
+        return verts
 
     return []
 
 
 def build_cfd_domain_mesh(
-    curve_obj, channel_params: ChannelParams, cfd_params: CFDParams
+    curve_obj, channel_params: ChannelParams, cfd_params=None
 ) -> Tuple[List[Vector], List[Tuple[int, ...]], Dict[str, List[int]]]:
     """
-    Build CFD domain mesh geometry with inlet/outlet extensions.
+    Build CFD domain mesh geometry following exactly the channel axis.
+    No extensions - just the pure fluid volume matching the channel.
 
     Args:
         curve_obj: Blender curve object (axis)
         channel_params: Channel parameters
-        cfd_params: CFD domain parameters
+        cfd_params: Deprecated, kept for compatibility but ignored
 
     Returns:
         Tuple of (vertices, faces, patch_face_indices)
     """
+    # Check if curve is cyclic
+    is_cyclic = _is_curve_cyclic(curve_obj)
 
-    # Sample curve
+    # Sample curve - same as channel
     samples = sample_curve_points(curve_obj, channel_params.resolution_m)
     if len(samples) < 2:
         return [], [], {}
 
-    # Generate CFD section profile
-    section_verts = generate_cfd_section_vertices(channel_params, cfd_params)
+    # For cyclic curves, remove duplicate endpoint
+    if is_cyclic and len(samples) > 2:
+        start_pos = samples[0]["position"]
+        end_pos = samples[-1]["position"]
+        if (end_pos - start_pos).length < channel_params.resolution_m * 0.5:
+            samples = samples[:-1]
+
+    # Generate CFD section profile (always full)
+    section_verts = generate_cfd_section_vertices(channel_params)
     if not section_verts:
         return [], [], {}
 
     num_section_verts = len(section_verts)
-
-    # Add inlet extension
-    extended_samples = []
-    if cfd_params.inlet_extension_m > 0:
-        first_sample = samples[0]
-        tangent = first_sample["tangent"]
-
-        # Extend backwards
-        num_ext_samples = max(2, int(cfd_params.inlet_extension_m / channel_params.resolution_m))
-        for i in range(num_ext_samples, 0, -1):
-            ext_dist = i * channel_params.resolution_m
-            if ext_dist > cfd_params.inlet_extension_m:
-                ext_dist = cfd_params.inlet_extension_m
-
-            ext_pos = first_sample["position"] - tangent * ext_dist
-            extended_samples.append(
-                {
-                    "position": ext_pos,
-                    "tangent": tangent,
-                    "normal": first_sample["normal"],
-                    "station": -ext_dist,
-                    "is_extension": True,
-                    "patch": "inlet_ext",
-                }
-            )
-
-    # Add main samples
-    for sample in samples:
-        sample["is_extension"] = False
-        sample["patch"] = "main"
-        extended_samples.append(sample)
-
-    # Add outlet extension
-    if cfd_params.outlet_extension_m > 0:
-        last_sample = samples[-1]
-        tangent = last_sample["tangent"]
-
-        num_ext_samples = max(2, int(cfd_params.outlet_extension_m / channel_params.resolution_m))
-        for i in range(1, num_ext_samples + 1):
-            ext_dist = i * channel_params.resolution_m
-            if ext_dist > cfd_params.outlet_extension_m:
-                ext_dist = cfd_params.outlet_extension_m
-
-            ext_pos = last_sample["position"] + tangent * ext_dist
-            extended_samples.append(
-                {
-                    "position": ext_pos,
-                    "tangent": tangent,
-                    "normal": last_sample["normal"],
-                    "station": last_sample["station"] + ext_dist,
-                    "is_extension": True,
-                    "patch": "outlet_ext",
-                }
-            )
 
     vertices = []
     faces = []
@@ -179,7 +112,7 @@ def build_cfd_domain_mesh(
     }
 
     # Generate vertices for each sample point
-    for sample in extended_samples:
+    for sample in samples:
         pos = sample["position"]
         tangent = sample["tangent"]
         normal = sample["normal"]
@@ -189,13 +122,17 @@ def build_cfd_domain_mesh(
             world_pos = pos + binormal * sx + normal * sy
             vertices.append(world_pos)
 
-    # Generate side faces (walls)
-    num_samples = len(extended_samples)
+    # Generate side faces
+    num_samples = len(samples)
     face_idx = 0
 
-    for i in range(num_samples - 1):
+    # For cyclic: connect last to first
+    num_connections = num_samples if is_cyclic else num_samples - 1
+
+    for i in range(num_connections):
         base_current = i * num_section_verts
-        base_next = (i + 1) * num_section_verts
+        next_idx = (i + 1) % num_samples if is_cyclic else i + 1
+        base_next = next_idx * num_section_verts
 
         for j in range(num_section_verts):
             j_next = (j + 1) % num_section_verts
@@ -208,28 +145,30 @@ def build_cfd_domain_mesh(
             faces.append((v1, v2, v3, v4))
 
             # Classify face by patch
-            # Bottom faces (j == 0 for trap/rect, or bottom segment for circular)
-            if j == 0 and channel_params.section_type != SectionType.CIRCULAR:
-                patch_faces[PatchType.BOTTOM.value].append(face_idx)
-            # Top faces (last segment before closing)
-            elif j == num_section_verts - 1 and cfd_params.fill_mode == FillMode.WATER_LEVEL:
-                patch_faces[PatchType.TOP.value].append(face_idx)
+            if channel_params.section_type != SectionType.CIRCULAR:
+                # For trap/rect: bottom (j=0), left wall (j=3->0), right wall (j=1->2), top (j=2->3)
+                if j == 0:
+                    patch_faces[PatchType.BOTTOM.value].append(face_idx)
+                elif j == num_section_verts - 1:
+                    patch_faces[PatchType.TOP.value].append(face_idx)
+                else:
+                    patch_faces[PatchType.WALLS.value].append(face_idx)
             else:
+                # Circular: all walls
                 patch_faces[PatchType.WALLS.value].append(face_idx)
 
             face_idx += 1
 
-    # Generate inlet cap
-    if cfd_params.cap_inlet:
+    # Generate inlet/outlet caps only for non-cyclic curves
+    if not is_cyclic:
+        # Inlet cap (first section)
         inlet_verts = list(range(num_section_verts))
-        # Create triangulated cap
         for i in range(1, num_section_verts - 1):
             faces.append((inlet_verts[0], inlet_verts[i + 1], inlet_verts[i]))
             patch_faces[PatchType.INLET.value].append(face_idx)
             face_idx += 1
 
-    # Generate outlet cap
-    if cfd_params.cap_outlet:
+        # Outlet cap (last section)
         base = (num_samples - 1) * num_section_verts
         outlet_verts = list(range(base, base + num_section_verts))
         for i in range(1, num_section_verts - 1):
@@ -332,3 +271,45 @@ def create_cfd_domain_object(
     mesh.validate()
 
     return obj
+
+
+def update_cfd_domain_geometry(
+    obj,
+    vertices: List[Vector],
+    faces: List[Tuple[int, ...]],
+    patch_faces: Dict[str, List[int]],
+) -> None:
+    """
+    Update existing CFD domain object geometry.
+
+    Args:
+        obj: Existing Blender object
+        vertices: New vertex positions
+        faces: New face vertex indices
+        patch_faces: New patch face assignments
+    """
+    import bmesh
+
+    mesh = obj.data
+    mesh.clear_geometry()
+
+    # Build new mesh
+    mesh.from_pydata([tuple(v) for v in vertices], [], faces)
+    mesh.update()
+
+    # Recalculate normals
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+
+    # Re-assign materials to faces (keep existing materials)
+    for i, (patch_name, face_indices) in enumerate(patch_faces.items()):
+        if i < len(obj.data.materials):
+            for face_idx in face_indices:
+                if face_idx < len(mesh.polygons):
+                    mesh.polygons[face_idx].material_index = i
+
+    mesh.update()
+    mesh.validate()

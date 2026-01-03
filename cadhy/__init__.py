@@ -8,7 +8,7 @@ import sys
 bl_info = {
     "name": "CADHY",
     "author": "CADHY Team",
-    "version": (0, 3, 2),
+    "version": (0, 3, 3),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar > CADHY",
     "description": "Parametric modeling toolkit for hydraulic infrastructure and CFD domain generation",
@@ -89,9 +89,9 @@ def register():
     sys.excepthook = _cadhy_excepthook
 
     # Import and register all classes
-    from . import register as reg
+    from . import registration
 
-    reg.register()
+    registration.register()
 
     # Log successful registration
     try:
@@ -108,9 +108,9 @@ def unregister():
     sys.excepthook = _original_excepthook
 
     # Unregister all classes
-    from . import register as reg
+    from . import registration
 
-    reg.unregister()
+    registration.unregister()
 
     # Log unregistration
     try:

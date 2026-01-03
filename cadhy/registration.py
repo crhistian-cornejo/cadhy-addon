@@ -14,6 +14,8 @@ from .blender.operators.op_export_cfd import CADHY_OT_ExportCFD
 from .blender.operators.op_export_report import CADHY_OT_ExportReport
 from .blender.operators.op_generate_sections import CADHY_OT_GenerateSections
 from .blender.operators.op_setup_render import CADHY_OT_SetupRender
+from .blender.operators.op_station_markers import CADHY_OT_ClearStationMarkers, CADHY_OT_CreateStationMarkers
+from .blender.operators.op_update_cfd_domain import CADHY_OT_UpdateCFDDomain
 from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
 from .blender.operators.op_validate_mesh import CADHY_OT_ValidateMesh
 from .blender.panels.pt_cfd import CADHY_PT_CFD
@@ -50,12 +52,15 @@ classes = (
     CADHY_OT_BuildChannel,
     CADHY_OT_UpdateChannel,
     CADHY_OT_BuildCFDDomain,
+    CADHY_OT_UpdateCFDDomain,
     CADHY_OT_GenerateSections,
     CADHY_OT_ExportCFD,
     CADHY_OT_ExportReport,
     CADHY_OT_ValidateMesh,
     CADHY_OT_SetupRender,
     CADHY_OT_AssignMaterials,
+    CADHY_OT_CreateStationMarkers,
+    CADHY_OT_ClearStationMarkers,
     CADHY_OT_DevReload,
     CADHY_OT_ExportAll,
     CADHY_OT_CheckUpdates,
