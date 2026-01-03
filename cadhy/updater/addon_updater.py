@@ -183,42 +183,69 @@ class AddonUpdater:
         Returns:
             True if installation successful
         """
+        backup_dir = None
 
         try:
-            # Get addon directory
-            addon_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            parent_dir = os.path.dirname(addon_dir)
+            # Get addon directory (cadhy/)
+            # __file__ is: .../addons/cadhy/updater/addon_updater.py
+            # dirname x2 gives us: .../addons/cadhy/
+            addon_dir = os.path.dirname(os.path.dirname(__file__))
+            addons_dir = os.path.dirname(addon_dir)  # .../addons/
+
+            # Verify we're in the right place (safety check)
+            if not addon_dir.endswith("cadhy"):
+                self._error = f"Unexpected addon directory: {addon_dir}"
+                return False
 
             # Create backup
-            backup_dir = os.path.join(parent_dir, "cadhy_backup")
+            backup_dir = os.path.join(addons_dir, "cadhy_backup")
             if os.path.exists(backup_dir):
                 shutil.rmtree(backup_dir)
             shutil.copytree(addon_dir, backup_dir)
 
             # Extract new version
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                # Find the root folder in zip
+                # Check ZIP structure - our ZIPs have cadhy/ as root
                 names = zip_ref.namelist()
-                root_folder = names[0].split("/")[0] if names else ""
+                if not names:
+                    self._error = "Empty ZIP file"
+                    return False
+
+                root_folder = names[0].split("/")[0]
 
                 # Extract to temp location
-                temp_extract = os.path.join(parent_dir, "cadhy_temp")
+                temp_extract = os.path.join(addons_dir, "cadhy_update_temp")
+                if os.path.exists(temp_extract):
+                    shutil.rmtree(temp_extract)
                 zip_ref.extractall(temp_extract)
 
-                # Move extracted content
+                # The extracted content should be at temp_extract/cadhy/
                 extracted_addon = os.path.join(temp_extract, root_folder)
-                if os.path.exists(extracted_addon):
-                    # Remove old addon
-                    shutil.rmtree(addon_dir)
-                    # Move new addon
-                    shutil.move(extracted_addon, addon_dir)
+
+                if not os.path.exists(extracted_addon):
+                    self._error = f"Expected folder '{root_folder}' not found in ZIP"
+                    shutil.rmtree(temp_extract)
+                    return False
+
+                # Verify it looks like a valid addon
+                init_file = os.path.join(extracted_addon, "__init__.py")
+                if not os.path.exists(init_file):
+                    self._error = "Invalid addon: __init__.py not found"
+                    shutil.rmtree(temp_extract)
+                    return False
+
+                # Remove old addon
+                shutil.rmtree(addon_dir)
+
+                # Move new addon to addons directory
+                shutil.move(extracted_addon, addon_dir)
 
                 # Cleanup temp
                 if os.path.exists(temp_extract):
                     shutil.rmtree(temp_extract)
 
             # Remove backup on success
-            if os.path.exists(backup_dir):
+            if backup_dir and os.path.exists(backup_dir):
                 shutil.rmtree(backup_dir)
 
             return True
@@ -228,7 +255,7 @@ class AddonUpdater:
 
             # Try to restore backup
             try:
-                if os.path.exists(backup_dir):
+                if backup_dir and os.path.exists(backup_dir):
                     if os.path.exists(addon_dir):
                         shutil.rmtree(addon_dir)
                     shutil.move(backup_dir, addon_dir)

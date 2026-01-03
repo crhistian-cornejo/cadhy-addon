@@ -5,6 +5,18 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.2.3] - 2026-01-03
+
+### Fixed
+- **Critical: Auto-Updater Installation Bug**: Fixed path calculation in `install_update()`
+  - Previous version had wrong `dirname()` count causing incorrect addon directory detection
+  - Could cause addon to disappear after update ("Missing Add-ons" in Blender)
+  - Added safety checks to verify addon directory before operations
+  - Added validation for ZIP structure and `__init__.py` presence
+  - Improved backup/restore logic with proper error handling
+
+---
+
 ## [0.2.2] - 2026-01-03
 
 ### Fixed
