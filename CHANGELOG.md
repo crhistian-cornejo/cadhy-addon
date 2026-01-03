@@ -5,6 +5,15 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.2.1] - 2026-01-03
+
+### Fixed
+- **Build Channel Error**: Fixed `bpy.ops.object.select_all.poll() failed` error
+  - Replaced operator call with direct API for object selection
+  - No longer depends on context for select_all operation
+
+---
+
 ## [0.2.0] - 2026-01-03
 
 ### Added

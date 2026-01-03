@@ -88,8 +88,9 @@ class CADHY_OT_BuildChannel(Operator):
             ch_settings.cadhy_version = CADHY_VERSION_STRING
             ch_settings.is_cadhy_object = True
 
-            # Select the created object
-            bpy.ops.object.select_all(action="DESELECT")
+            # Select the created object (using direct API, not operators)
+            for obj in context.selected_objects:
+                obj.select_set(False)
             channel_obj.select_set(True)
             context.view_layer.objects.active = channel_obj
 
