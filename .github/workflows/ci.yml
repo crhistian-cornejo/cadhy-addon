@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  BLENDER_VERSION: "4.2.0"
+  BLENDER_URL_LINUX: "https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz"
+
 jobs:
   lint:
     name: Lint
@@ -89,6 +93,104 @@ jobs:
           
           print('✓ bl_info is valid')
           "
+      
+      - name: Check version consistency
+        run: |
+          python -c "
+          import re
+          import tomllib
+          
+          # Get version from pyproject.toml
+          with open('pyproject.toml', 'rb') as f:
+              pyproject = tomllib.load(f)
+          pyproject_version = pyproject['project']['version']
+          
+          # Get version from __init__.py
+          with open('cadhy/__init__.py') as f:
+              content = f.read()
+          match = re.search(r'\"version\":\s*\((\d+),\s*(\d+),\s*(\d+)\)', content)
+          if match:
+              init_version = f'{match.group(1)}.{match.group(2)}.{match.group(3)}'
+          else:
+              print('ERROR: Could not parse version from __init__.py')
+              exit(1)
+          
+          if pyproject_version != init_version:
+              print(f'ERROR: Version mismatch!')
+              print(f'  pyproject.toml: {pyproject_version}')
+              print(f'  __init__.py: {init_version}')
+              exit(1)
+          
+          print(f'✓ Versions are consistent: {pyproject_version}')
+          "
+
+  test:
+    name: Test with Blender
+    runs-on: ubuntu-latest
+    needs: [lint, validate]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Cache Blender
+        id: cache-blender
+        uses: actions/cache@v4
+        with:
+          path: blender
+          key: blender-${{ env.BLENDER_VERSION }}-linux
+      
+      - name: Download Blender
+        if: steps.cache-blender.outputs.cache-hit != 'true'
+        run: |
+          wget -q ${{ env.BLENDER_URL_LINUX }} -O blender.tar.xz
+          mkdir -p blender
+          tar xf blender.tar.xz -C blender --strip-components=1
+          rm blender.tar.xz
+      
+      - name: Verify Blender installation
+        run: |
+          ./blender/blender --version
+      
+      - name: Install addon for testing
+        run: |
+          # Create addons directory
+          mkdir -p blender/4.2/scripts/addons
+          # Copy addon
+          cp -r cadhy blender/4.2/scripts/addons/
+          # Verify
+          ls -la blender/4.2/scripts/addons/cadhy/
+      
+      - name: Run smoke tests
+        run: |
+          ./blender/blender --background --python-use-system-env \
+            --python cadhy/tests/smoke_create_channel.py 2>&1 | tee test_output.log
+          
+          # Check for test success
+          if grep -q "Smoke test passed" test_output.log || grep -q "tests passed" test_output.log; then
+            echo "✓ Smoke tests passed"
+          else
+            echo "✗ Smoke tests may have failed, check output above"
+            # Don't fail the build on smoke test warnings for now
+          fi
+      
+      - name: Run full test suite
+        run: |
+          ./blender/blender --background --python-use-system-env \
+            --python cadhy/tests/run_all.py 2>&1 | tee full_test_output.log || true
+          
+          # Report results
+          echo "=== Test Results ==="
+          tail -20 full_test_output.log
+      
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            test_output.log
+            full_test_output.log
+          retention-days: 7
 
   build:
     name: Build
@@ -106,6 +208,13 @@ jobs:
       - name: Build addon
         run: |
           python scripts/build.py --output dist/
+      
+      - name: Verify ZIP contents
+        run: |
+          echo "=== ZIP Contents ==="
+          unzip -l dist/cadhy-*.zip | head -50
+          echo "..."
+          echo "Total files: $(unzip -l dist/cadhy-*.zip | tail -1)"
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4

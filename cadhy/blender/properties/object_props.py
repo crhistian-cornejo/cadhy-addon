@@ -74,6 +74,45 @@ class CADHYChannelSettings(PropertyGroup):
     # Computed properties (read-only, for display)
     total_length: FloatProperty(name="Total Length", description="Total length of channel", default=0.0, unit="LENGTH")
 
+    # Slope info (from source axis)
+    slope_avg: FloatProperty(name="Average Slope", description="Average slope (m/m)", default=0.0, precision=6)
+    slope_percent: FloatProperty(name="Slope %", description="Average slope in percent", default=0.0, precision=3)
+    elevation_start: FloatProperty(
+        name="Start Elevation", description="Elevation at channel start", default=0.0, unit="LENGTH"
+    )
+    elevation_end: FloatProperty(
+        name="End Elevation", description="Elevation at channel end", default=0.0, unit="LENGTH"
+    )
+    elevation_drop: FloatProperty(name="Elevation Drop", description="Total elevation drop", default=0.0, unit="LENGTH")
+
+    # Hydraulic properties (at design depth)
+    hydraulic_area: FloatProperty(
+        name="Hydraulic Area", description="Cross-sectional flow area", default=0.0, unit="AREA"
+    )
+    wetted_perimeter: FloatProperty(
+        name="Wetted Perimeter", description="Wetted perimeter length", default=0.0, unit="LENGTH"
+    )
+    hydraulic_radius: FloatProperty(
+        name="Hydraulic Radius", description="Hydraulic radius (A/P)", default=0.0, unit="LENGTH"
+    )
+    top_width_water: FloatProperty(name="Top Width", description="Water surface width", default=0.0, unit="LENGTH")
+    manning_velocity: FloatProperty(name="Velocity", description="Manning velocity (m/s)", default=0.0)
+    manning_discharge: FloatProperty(name="Discharge", description="Manning discharge (m³/s)", default=0.0)
+    manning_n: FloatProperty(
+        name="Manning n", description="Manning roughness coefficient", default=0.015, min=0.001, max=0.1
+    )
+
+    # Mesh statistics
+    mesh_vertices: IntProperty(name="Vertices", description="Number of mesh vertices", default=0)
+    mesh_edges: IntProperty(name="Edges", description="Number of mesh edges", default=0)
+    mesh_faces: IntProperty(name="Faces", description="Number of mesh faces", default=0)
+    mesh_triangles: IntProperty(name="Triangles", description="Number of triangles", default=0)
+    mesh_volume: FloatProperty(name="Volume", description="Mesh volume", default=0.0, unit="VOLUME")
+    mesh_surface_area: FloatProperty(name="Surface Area", description="Mesh surface area", default=0.0, unit="AREA")
+    mesh_is_manifold: BoolProperty(name="Is Manifold", description="Whether mesh is manifold", default=False)
+    mesh_is_watertight: BoolProperty(name="Is Watertight", description="Whether mesh is watertight", default=False)
+    mesh_non_manifold: IntProperty(name="Non-Manifold Edges", description="Number of non-manifold edges", default=0)
+
     # Version tracking
     cadhy_version: StringProperty(
         name="CADHY Version", description="Version of CADHY used to create this object", default=""

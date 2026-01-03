@@ -1,6 +1,7 @@
 """
 CADHY Registration Module
 Handles registration and unregistration of all Blender classes.
+Includes keyboard shortcuts registration similar to major addons.
 """
 
 import bpy
@@ -16,6 +17,7 @@ from .blender.operators.op_setup_render import CADHY_OT_SetupRender
 from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
 from .blender.operators.op_validate_mesh import CADHY_OT_ValidateMesh
 from .blender.panels.pt_cfd import CADHY_PT_CFD
+from .blender.panels.pt_channel_info import CADHY_OT_RefreshChannelInfo, CADHY_PT_ChannelInfo
 from .blender.panels.pt_export import CADHY_OT_ExportAll, CADHY_PT_Export
 from .blender.panels.pt_main import CADHY_PT_Main
 from .blender.panels.pt_render import CADHY_OT_ToggleShading, CADHY_PT_Render
@@ -27,12 +29,20 @@ from .blender.panels.pt_updates import (
     CADHY_OT_PrintSystemInfo,
     CADHY_PT_Updates,
 )
+from .blender.preferences import CADHY_OT_OpenLogFile, CADHYPreferences
 from .blender.properties.object_props import CADHYCFDSettings, CADHYChannelSettings
 from .blender.properties.scene_props import CADHYSceneSettings
 
+# Keyboard shortcuts storage
+addon_keymaps = []
+
 # Order matters for registration
+# Preferences must be registered first (before other classes reference it)
+# PropertyGroups before Operators before Panels
 classes = (
-    # Properties (must be first)
+    # Addon Preferences (must be first for bl_idname to work)
+    CADHYPreferences,
+    # Properties
     CADHYSceneSettings,
     CADHYChannelSettings,
     CADHYCFDSettings,
@@ -53,8 +63,11 @@ classes = (
     CADHY_OT_InstallUpdate,
     CADHY_OT_PrintSystemInfo,
     CADHY_OT_ToggleShading,
+    CADHY_OT_OpenLogFile,
+    CADHY_OT_RefreshChannelInfo,
     # Panels
     CADHY_PT_Main,
+    CADHY_PT_ChannelInfo,
     CADHY_PT_CFD,
     CADHY_PT_Sections,
     CADHY_PT_Export,
@@ -63,10 +76,69 @@ classes = (
 )
 
 
+def register_keymaps():
+    """Register keyboard shortcuts for CADHY operators."""
+    wm = bpy.context.window_manager
+    kc = wm.keyconfigs.addon
+
+    if kc is None:
+        return
+
+    # 3D View keymap
+    km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
+
+    # Ctrl+Shift+B: Build Channel
+    kmi = km.keymap_items.new(
+        "cadhy.build_channel",
+        type="B",
+        value="PRESS",
+        ctrl=True,
+        shift=True,
+    )
+    addon_keymaps.append((km, kmi))
+
+    # Ctrl+Shift+U: Update Channel
+    kmi = km.keymap_items.new(
+        "cadhy.update_channel",
+        type="U",
+        value="PRESS",
+        ctrl=True,
+        shift=True,
+    )
+    addon_keymaps.append((km, kmi))
+
+    # Ctrl+Shift+D: Build CFD Domain
+    kmi = km.keymap_items.new(
+        "cadhy.build_cfd_domain",
+        type="D",
+        value="PRESS",
+        ctrl=True,
+        shift=True,
+    )
+    addon_keymaps.append((km, kmi))
+
+    # Ctrl+Shift+S: Generate Sections
+    kmi = km.keymap_items.new(
+        "cadhy.generate_sections",
+        type="S",
+        value="PRESS",
+        ctrl=True,
+        shift=True,
+        alt=True,
+    )
+    addon_keymaps.append((km, kmi))
+
+
+def unregister_keymaps():
+    """Unregister keyboard shortcuts."""
+    for km, kmi in addon_keymaps:
+        km.keymap_items.remove(kmi)
+    addon_keymaps.clear()
+
+
 def is_registered(cls):
     """Check if a class is already registered."""
     try:
-        # For PropertyGroups, check if bl_rna exists
         if hasattr(cls, "bl_rna"):
             return True
         return False
@@ -80,13 +152,12 @@ def register():
         try:
             bpy.utils.register_class(cls)
         except ValueError as e:
-            # Class already registered, skip
             if "already registered" in str(e):
                 pass
             else:
                 raise e
 
-    # Attach property groups to Scene and Object (only if not already attached)
+    # Attach property groups to Scene and Object
     if not hasattr(bpy.types.Scene, "cadhy"):
         bpy.types.Scene.cadhy = bpy.props.PointerProperty(type=CADHYSceneSettings)
     if not hasattr(bpy.types.Object, "cadhy_channel"):
@@ -94,10 +165,24 @@ def register():
     if not hasattr(bpy.types.Object, "cadhy_cfd"):
         bpy.types.Object.cadhy_cfd = bpy.props.PointerProperty(type=CADHYCFDSettings)
 
+    # Register keyboard shortcuts
+    register_keymaps()
+
+    # Reconfigure logging from preferences (after preferences are registered)
+    try:
+        from .core.util.logging import reconfigure_from_preferences
+
+        reconfigure_from_preferences()
+    except Exception:
+        pass
+
 
 def unregister():
     """Unregister all classes and remove properties."""
-    # Remove properties first (with safety checks)
+    # Unregister keyboard shortcuts first
+    unregister_keymaps()
+
+    # Remove properties (with safety checks)
     if hasattr(bpy.types.Object, "cadhy_cfd"):
         del bpy.types.Object.cadhy_cfd
     if hasattr(bpy.types.Object, "cadhy_channel"):
@@ -110,5 +195,4 @@ def unregister():
         try:
             bpy.utils.unregister_class(cls)
         except RuntimeError:
-            # Class not registered, skip
             pass

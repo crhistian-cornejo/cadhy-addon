@@ -5,6 +5,39 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.2] - 2026-01-03
+
+### Added
+
+- **Channel Info Panel**: Real-time geometric and hydraulic information display
+  - New collapsible panel "Channel Info" appears when a CADHY channel is selected
+  - **Geometry Section**: Section type, bottom width, side slope, top width, heights
+  - **Profile & Slope Section**: Channel length, slope (%, m/m, 1:N), elevation data
+  - **Hydraulics Section**: 
+    - Cross-sectional properties: Area, Wetted Perimeter, Hydraulic Radius
+    - Manning's flow calculation: Velocity and Discharge at design depth
+    - Editable Manning's n coefficient (default 0.015)
+  - **Mesh Stats Section**: Vertices, edges, faces, triangles, volume, surface area
+    - Manifold and watertight status indicators
+    - Non-manifold edge count for debugging
+  - "Refresh Info" button to recalculate all properties
+
+- **Hydraulics Module**: New `cadhy/core/geom/hydraulics.py` with:
+  - `HydraulicInfo`, `MeshStats`, `SlopeInfo` dataclasses
+  - `get_curve_slope_info()`: Extract slope from curve axis
+  - `get_mesh_stats()`: Calculate mesh statistics using bmesh
+  - `calculate_hydraulic_info()`: Compute hydraulic properties
+  - Support for TRAP, RECT, and CIRC sections
+
+### Technical
+
+- New panel `CADHY_PT_ChannelInfo` in `pt_channel_info.py`
+- New operator `CADHY_OT_RefreshChannelInfo` for on-demand recalculation
+- Extended `CADHYChannelSettings` with 20+ computed properties
+- Stored properties for slope, hydraulics, and mesh stats on channel objects
+
+---
+
 ## [0.3.1] - 2026-01-03
 
 ### Fixed
