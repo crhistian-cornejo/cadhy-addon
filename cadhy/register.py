@@ -53,24 +53,52 @@ classes = (
 )
 
 
+def is_registered(cls):
+    """Check if a class is already registered."""
+    try:
+        # For PropertyGroups, check if bl_rna exists
+        if hasattr(cls, "bl_rna"):
+            return True
+        return False
+    except Exception:
+        return False
+
+
 def register():
     """Register all classes and attach properties."""
     for cls in classes:
-        bpy.utils.register_class(cls)
+        try:
+            bpy.utils.register_class(cls)
+        except ValueError as e:
+            # Class already registered, skip
+            if "already registered" in str(e):
+                pass
+            else:
+                raise e
 
-    # Attach property groups to Scene and Object
-    bpy.types.Scene.cadhy = bpy.props.PointerProperty(type=CADHYSceneSettings)
-    bpy.types.Object.cadhy_channel = bpy.props.PointerProperty(type=CADHYChannelSettings)
-    bpy.types.Object.cadhy_cfd = bpy.props.PointerProperty(type=CADHYCFDSettings)
+    # Attach property groups to Scene and Object (only if not already attached)
+    if not hasattr(bpy.types.Scene, "cadhy"):
+        bpy.types.Scene.cadhy = bpy.props.PointerProperty(type=CADHYSceneSettings)
+    if not hasattr(bpy.types.Object, "cadhy_channel"):
+        bpy.types.Object.cadhy_channel = bpy.props.PointerProperty(type=CADHYChannelSettings)
+    if not hasattr(bpy.types.Object, "cadhy_cfd"):
+        bpy.types.Object.cadhy_cfd = bpy.props.PointerProperty(type=CADHYCFDSettings)
 
 
 def unregister():
     """Unregister all classes and remove properties."""
-    # Remove properties first
-    del bpy.types.Object.cadhy_cfd
-    del bpy.types.Object.cadhy_channel
-    del bpy.types.Scene.cadhy
+    # Remove properties first (with safety checks)
+    if hasattr(bpy.types.Object, "cadhy_cfd"):
+        del bpy.types.Object.cadhy_cfd
+    if hasattr(bpy.types.Object, "cadhy_channel"):
+        del bpy.types.Object.cadhy_channel
+    if hasattr(bpy.types.Scene, "cadhy"):
+        del bpy.types.Scene.cadhy
 
     # Unregister classes in reverse order
     for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            # Class not registered, skip
+            pass
