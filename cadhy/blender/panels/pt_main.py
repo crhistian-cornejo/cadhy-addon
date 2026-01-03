@@ -3,6 +3,7 @@ Main Panel
 Primary CADHY panel for channel creation.
 """
 
+import bpy
 from bpy.types import Panel
 
 
@@ -30,6 +31,16 @@ class CADHY_PT_Main(Panel):
         if settings.axis_object:
             row = box.row()
             row.label(text=f"Type: {settings.axis_object.type}")
+
+            # Check if channel exists for this axis
+            from ...core.util.naming import get_channel_name
+
+            channel_name = get_channel_name(settings.axis_object.name)
+            channel_exists = channel_name in bpy.data.objects
+
+            if channel_exists:
+                row = box.row()
+                row.label(text=f"Channel: {channel_name}", icon="CHECKMARK")
         elif context.active_object and context.active_object.type == "CURVE":
             row = box.row()
             row.label(text=f"Active: {context.active_object.name}", icon="INFO")
@@ -67,23 +78,44 @@ class CADHY_PT_Main(Panel):
         col.prop(settings, "lining_thickness", text="Lining Thickness")
         col.prop(settings, "resolution_m", text="Resolution (m)")
 
+        # Resolution warning for long curves
+        if settings.axis_object and settings.resolution_m < 0.5:
+            try:
+                from ...core.geom.build_channel import get_curve_length
+
+                length = get_curve_length(settings.axis_object)
+                if length > 100:
+                    row = box.row()
+                    row.label(text="Low resolution on long curve!", icon="ERROR")
+            except Exception:
+                pass
+
         # Calculated values
         if settings.section_type == "TRAP":
             total_height = settings.height + settings.freeboard
             top_width = settings.bottom_width + 2 * settings.side_slope * total_height
 
             box.separator()
-            row = box.row()
-            row.label(text=f"Top Width: {top_width:.2f} m")
-            row = box.row()
-            row.label(text=f"Total Height: {total_height:.2f} m")
+            sub = box.column(align=True)
+            sub.label(text=f"Top Width: {top_width:.2f} m")
+            sub.label(text=f"Total Height: {total_height:.2f} m")
 
         layout.separator()
 
         # Build Button
+        channel_exists = False
+        if settings.axis_object:
+            from ...core.util.naming import get_channel_name
+
+            channel_name = get_channel_name(settings.axis_object.name)
+            channel_exists = channel_name in bpy.data.objects
+
         row = layout.row(align=True)
         row.scale_y = 1.5
-        row.operator("cadhy.build_channel", text="Build Channel", icon="MOD_BUILD")
+        if channel_exists:
+            row.operator("cadhy.build_channel", text="Update Channel", icon="FILE_REFRESH")
+        else:
+            row.operator("cadhy.build_channel", text="Build Channel", icon="MOD_BUILD")
 
         # Quick CFD build
         if settings.cfd_enabled:

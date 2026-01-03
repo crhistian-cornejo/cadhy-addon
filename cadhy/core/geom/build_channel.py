@@ -28,7 +28,9 @@ def sample_curve_points(curve_obj, resolution_m: float) -> List[dict]:
     if not curve_data.splines:
         return []
 
-    curve_data.splines[0]
+    # Verify at least one spline exists
+    if len(curve_data.splines) == 0:
+        return []
 
     # Calculate total length
     total_length = get_curve_length(curve_obj)

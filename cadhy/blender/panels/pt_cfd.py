@@ -3,6 +3,7 @@ CFD Panel
 Panel for CFD domain generation and validation.
 """
 
+import bpy
 from bpy.types import Panel
 
 
@@ -27,13 +28,43 @@ class CADHY_PT_CFD(Panel):
 
         layout.enabled = settings.cfd_enabled
 
+        # Check if CFD domain exists
+        cfd_domain_exists = False
+        cfd_domain_name = ""
+        if settings.axis_object:
+            from ...core.util.naming import get_cfd_domain_name
+
+            cfd_domain_name = get_cfd_domain_name(settings.axis_object.name)
+            cfd_domain_exists = cfd_domain_name in bpy.data.objects
+
+        # Status indicator
+        status_box = layout.box()
+        if cfd_domain_exists:
+            row = status_box.row()
+            row.label(text=f"Domain: {cfd_domain_name}", icon="CHECKMARK")
+        else:
+            row = status_box.row()
+            row.label(text="No CFD domain created", icon="INFO")
+
+        layout.separator()
+
         # Fill Mode
         box = layout.box()
         box.label(text="Fill Mode", icon="MOD_FLUIDSIM")
         box.prop(settings, "cfd_fill_mode", text="")
 
         if settings.cfd_fill_mode == "WATER_LEVEL":
-            box.prop(settings, "cfd_water_level", text="Water Level")
+            col = box.column(align=True)
+            col.prop(settings, "cfd_water_level", text="Water Level")
+
+            # Warning if water level exceeds channel height
+            if settings.cfd_water_level > settings.height:
+                row = box.row()
+                row.alert = True
+                row.label(text="Water level > Channel height!", icon="ERROR")
+            elif settings.cfd_water_level > settings.height * 0.95:
+                row = box.row()
+                row.label(text="Water level near max", icon="INFO")
 
         layout.separator()
 
@@ -50,7 +81,10 @@ class CADHY_PT_CFD(Panel):
         # Build Button
         row = layout.row(align=True)
         row.scale_y = 1.5
-        row.operator("cadhy.build_cfd_domain", text="Build CFD Domain", icon="MOD_FLUIDSIM")
+        if cfd_domain_exists:
+            row.operator("cadhy.build_cfd_domain", text="Update CFD Domain", icon="FILE_REFRESH")
+        else:
+            row.operator("cadhy.build_cfd_domain", text="Build CFD Domain", icon="MOD_FLUIDSIM")
 
         layout.separator()
 
@@ -67,15 +101,15 @@ class CADHY_PT_CFD(Panel):
 
             # Watertight status
             if cfd.is_watertight:
-                col.label(text="✓ Watertight", icon="CHECKMARK")
+                col.label(text="Watertight", icon="CHECKMARK")
             else:
-                col.label(text="✗ Not Watertight", icon="ERROR")
+                col.label(text="Not Watertight", icon="ERROR")
 
             # Manifold status
             if cfd.non_manifold_edges == 0:
-                col.label(text="✓ Manifold", icon="CHECKMARK")
+                col.label(text="Manifold", icon="CHECKMARK")
             else:
-                col.label(text=f"✗ {cfd.non_manifold_edges} non-manifold edges", icon="ERROR")
+                col.label(text=f"{cfd.non_manifold_edges} non-manifold edges", icon="ERROR")
 
             # Volume
             if cfd.volume > 0:
@@ -87,8 +121,11 @@ class CADHY_PT_CFD(Panel):
                 col.label(text="Ready for CFD Export", icon="FILE_TICK")
             else:
                 col.label(text="Fix issues before export", icon="ERROR")
-        else:
+        elif cfd_domain_exists:
             box.label(text="Select CFD domain to see status")
+        else:
+            box.label(text="Build CFD domain first")
 
         row = box.row()
+        row.enabled = cfd_domain_exists or (obj and obj.type == "MESH")
         row.operator("cadhy.validate_mesh", text="Validate Mesh", icon="VIEWZOOM")

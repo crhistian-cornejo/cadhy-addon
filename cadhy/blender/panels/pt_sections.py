@@ -33,13 +33,18 @@ class CADHY_PT_Sections(Panel):
 
         # Show curve length if available
         if settings.axis_object and settings.axis_object.type == "CURVE":
-            from ...core.geom.build_channel import get_curve_length
-
             try:
+                from ...core.geom.build_channel import get_curve_length
+
                 length = get_curve_length(settings.axis_object)
-                box.label(text=f"Curve Length: {length:.2f} m")
-            except Exception:
-                pass
+                if length > 0:
+                    box.label(text=f"Curve Length: {length:.2f} m", icon="DRIVER_DISTANCE")
+                else:
+                    box.label(text="Curve has no length", icon="ERROR")
+            except ImportError:
+                box.label(text="Module not loaded", icon="ERROR")
+            except (AttributeError, TypeError) as e:
+                box.label(text=f"Curve error: {str(e)[:20]}", icon="ERROR")
 
         layout.separator()
 
@@ -79,6 +84,13 @@ class CADHY_PT_Sections(Panel):
         box = layout.box()
         box.label(text="Export", icon="EXPORT")
 
+        # Check if sections exist for enabling export
+        has_sections = "CADHY_Sections" in bpy.data.collections and len(bpy.data.collections["CADHY_Sections"].objects) > 0
+
         row = box.row(align=True)
+        row.enabled = has_sections
         row.operator("cadhy.export_report", text="Export CSV").format = "CSV"
         row.operator("cadhy.export_report", text="Export JSON").format = "JSON"
+
+        if not has_sections:
+            box.label(text="Generate sections first", icon="INFO")
