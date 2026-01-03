@@ -6,28 +6,28 @@ Creates symlinks to Blender's addons folder for live development.
 Works on Windows, macOS, and Linux.
 """
 
-import os
-import sys
-import platform
 import argparse
+import os
+import platform
+import sys
 from pathlib import Path
 
 
 def get_blender_addons_paths() -> list:
     """
     Get possible Blender addons directories.
-    
+
     Returns:
         List of potential addon directories
     """
     system = platform.system()
     home = Path.home()
-    
+
     paths = []
-    
+
     # Common Blender versions to check
     versions = ["4.3", "4.2", "4.1", "4.0", "3.6"]
-    
+
     if system == "Windows":
         # Windows paths
         appdata = os.environ.get("APPDATA", "")
@@ -35,72 +35,73 @@ def get_blender_addons_paths() -> list:
             base = Path(appdata) / "Blender Foundation" / "Blender"
             for ver in versions:
                 paths.append(base / ver / "scripts" / "addons")
-        
+
         # Also check Program Files for portable installs
         for pf in ["PROGRAMFILES", "PROGRAMFILES(X86)"]:
             pf_path = os.environ.get(pf, "")
             if pf_path:
                 for ver in versions:
                     paths.append(Path(pf_path) / "Blender Foundation" / f"Blender {ver}" / ver / "scripts" / "addons")
-    
+
     elif system == "Darwin":  # macOS
         base = home / "Library" / "Application Support" / "Blender"
         for ver in versions:
             paths.append(base / ver / "scripts" / "addons")
-    
+
     else:  # Linux
         # Standard config location
         config_base = home / ".config" / "blender"
         for ver in versions:
             paths.append(config_base / ver / "scripts" / "addons")
-        
+
         # Snap installation
         snap_base = home / "snap" / "blender" / "common" / ".config" / "blender"
         for ver in versions:
             paths.append(snap_base / ver / "scripts" / "addons")
-        
+
         # Flatpak installation
         flatpak_base = home / ".var" / "app" / "org.blender.Blender" / "config" / "blender"
         for ver in versions:
             paths.append(flatpak_base / ver / "scripts" / "addons")
-    
+
     return paths
 
 
 def find_blender_addons_dir() -> Path:
     """
     Find an existing Blender addons directory.
-    
+
     Returns:
         Path to addons directory or None
     """
     for path in get_blender_addons_paths():
         if path.exists():
             return path
-    
+
     return None
 
 
 def create_symlink(source: Path, target: Path, force: bool = False) -> bool:
     """
     Create a symbolic link.
-    
+
     Args:
         source: Source directory (addon)
         target: Target path (in Blender addons)
         force: Remove existing link/directory
-        
+
     Returns:
         True if successful
     """
     system = platform.system()
-    
+
     if target.exists() or target.is_symlink():
         if force:
             if target.is_symlink():
                 target.unlink()
             elif target.is_dir():
                 import shutil
+
                 shutil.rmtree(target)
             else:
                 target.unlink()
@@ -109,7 +110,7 @@ def create_symlink(source: Path, target: Path, force: bool = False) -> bool:
             print(f"Target already exists: {target}")
             print("Use --force to overwrite")
             return False
-    
+
     try:
         if system == "Windows":
             # Windows requires admin or developer mode for symlinks
@@ -119,19 +120,18 @@ def create_symlink(source: Path, target: Path, force: bool = False) -> bool:
             except OSError:
                 # Try using mklink /J (junction) as fallback
                 import subprocess
+
                 result = subprocess.run(
-                    ["cmd", "/c", "mklink", "/J", str(target), str(source)],
-                    capture_output=True,
-                    text=True
+                    ["cmd", "/c", "mklink", "/J", str(target), str(source)], capture_output=True, text=True
                 )
                 if result.returncode != 0:
                     raise OSError(f"Failed to create junction: {result.stderr}")
         else:
             target.symlink_to(source)
-        
+
         print(f"Created symlink: {target} -> {source}")
         return True
-        
+
     except OSError as e:
         print(f"Error creating symlink: {e}")
         if system == "Windows":
@@ -144,11 +144,11 @@ def create_symlink(source: Path, target: Path, force: bool = False) -> bool:
 def setup_development(blender_path: Path = None, force: bool = False) -> bool:
     """
     Set up development environment.
-    
+
     Args:
         blender_path: Custom Blender addons path
         force: Force overwrite existing
-        
+
     Returns:
         True if successful
     """
@@ -156,11 +156,11 @@ def setup_development(blender_path: Path = None, force: bool = False) -> bool:
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     addon_source = project_root / "cadhy"
-    
+
     if not addon_source.exists():
         print(f"Error: Addon source not found: {addon_source}")
         return False
-    
+
     # Find Blender addons directory
     if blender_path:
         addons_dir = Path(blender_path)
@@ -176,9 +176,9 @@ def setup_development(blender_path: Path = None, force: bool = False) -> bool:
                 print(f"  {path}")
             print("\nPlease specify path with --blender-path")
             return False
-    
+
     print(f"Blender addons directory: {addons_dir}")
-    
+
     # Create symlink
     target = addons_dir / "cadhy"
     return create_symlink(addon_source, target, force)
@@ -187,10 +187,10 @@ def setup_development(blender_path: Path = None, force: bool = False) -> bool:
 def remove_development(blender_path: Path = None) -> bool:
     """
     Remove development symlink.
-    
+
     Args:
         blender_path: Custom Blender addons path
-        
+
     Returns:
         True if successful
     """
@@ -201,9 +201,9 @@ def remove_development(blender_path: Path = None) -> bool:
         if not addons_dir:
             print("Could not find Blender addons directory.")
             return False
-    
+
     target = addons_dir / "cadhy"
-    
+
     if target.is_symlink():
         target.unlink()
         print(f"Removed symlink: {target}")
@@ -217,44 +217,26 @@ def remove_development(blender_path: Path = None) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Set up CADHY development environment"
-    )
-    parser.add_argument(
-        "--blender-path", "-b",
-        type=Path,
-        help="Custom Blender addons directory path"
-    )
-    parser.add_argument(
-        "--force", "-f",
-        action="store_true",
-        help="Force overwrite existing symlink"
-    )
-    parser.add_argument(
-        "--remove", "-r",
-        action="store_true",
-        help="Remove development symlink"
-    )
-    parser.add_argument(
-        "--list-paths",
-        action="store_true",
-        help="List possible Blender addon paths"
-    )
-    
+    parser = argparse.ArgumentParser(description="Set up CADHY development environment")
+    parser.add_argument("--blender-path", "-b", type=Path, help="Custom Blender addons directory path")
+    parser.add_argument("--force", "-f", action="store_true", help="Force overwrite existing symlink")
+    parser.add_argument("--remove", "-r", action="store_true", help="Remove development symlink")
+    parser.add_argument("--list-paths", action="store_true", help="List possible Blender addon paths")
+
     args = parser.parse_args()
-    
+
     if args.list_paths:
         print("Possible Blender addon directories:")
         for path in get_blender_addons_paths():
             exists = "✓" if path.exists() else "✗"
             print(f"  {exists} {path}")
         return
-    
+
     if args.remove:
         success = remove_development(args.blender_path)
     else:
         success = setup_development(args.blender_path, args.force)
-    
+
     if success:
         print("\n✓ Done!")
         if not args.remove:

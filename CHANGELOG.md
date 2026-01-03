@@ -5,6 +5,17 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.2.4] - 2026-01-03
+
+### Improved
+- **Optimized Release ZIP**: Smaller, cleaner addon package
+  - Excluded `tests/` folder (not needed for addon functionality)
+  - Excluded `README.md` and other markdown files
+  - Excluded `.gitkeep` placeholder files
+  - Reduced ZIP from ~58 files to ~49 files (100KB)
+
+---
+
 ## [0.2.3] - 2026-01-03
 
 ### Fixed
