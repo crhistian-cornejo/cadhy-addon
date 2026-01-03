@@ -106,20 +106,6 @@ class CADHY_OT_OpenReleasePage(Operator):
         return {"FINISHED"}
 
 
-# Registration
-classes = (
-    CADHY_OT_CheckForUpdates,
-    CADHY_OT_DownloadUpdate,
-    CADHY_OT_InstallUpdate,
-    CADHY_OT_OpenReleasePage,
-)
-
-
-def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
-
-
-def unregister():
-    for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)
+# Note: These classes are NOT registered here.
+# Registration is handled by the main register.py
+# which uses the operators defined in pt_updates.py instead.
