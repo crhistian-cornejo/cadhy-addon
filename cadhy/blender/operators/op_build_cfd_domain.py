@@ -15,6 +15,24 @@ from ...core.util.naming import COLLECTION_CFD, get_cfd_domain_name
 from ...core.util.versioning import CADHY_VERSION_STRING
 
 
+def find_channel_for_axis(axis_obj):
+    """
+    Find an existing CADHY channel object that uses the given axis curve.
+
+    Args:
+        axis_obj: The axis curve object
+
+    Returns:
+        Channel object if found, None otherwise
+    """
+    for obj in bpy.data.objects:
+        if obj.type == "MESH":
+            ch = getattr(obj, "cadhy_channel", None)
+            if ch and ch.is_cadhy_object and ch.source_axis == axis_obj:
+                return obj
+    return None
+
+
 class CADHY_OT_BuildCFDDomain(Operator):
     """Build or update CFD domain mesh from axis curve"""
 
@@ -47,22 +65,40 @@ class CADHY_OT_BuildCFDDomain(Operator):
             return {"CANCELLED"}
 
         with OperationLogger("Build CFD Domain", self) as logger:
-            # Create channel parameters
+            # Section type mapping
             section_type_map = {
                 "TRAP": SectionType.TRAPEZOIDAL,
                 "RECT": SectionType.RECTANGULAR,
                 "CIRC": SectionType.CIRCULAR,
             }
 
-            channel_params = ChannelParams(
-                section_type=section_type_map.get(settings.section_type, SectionType.TRAPEZOIDAL),
-                bottom_width=settings.bottom_width,
-                side_slope=settings.side_slope,
-                height=settings.height,
-                freeboard=settings.freeboard,
-                lining_thickness=settings.lining_thickness,
-                resolution_m=settings.resolution_m,
-            )
+            # Try to find existing channel with this axis to use its parameters
+            channel_obj = find_channel_for_axis(axis_obj)
+
+            if channel_obj:
+                # Use channel object's stored parameters
+                ch = channel_obj.cadhy_channel
+                channel_params = ChannelParams(
+                    section_type=section_type_map.get(ch.section_type, SectionType.TRAPEZOIDAL),
+                    bottom_width=ch.bottom_width,
+                    side_slope=ch.side_slope,
+                    height=ch.height,
+                    freeboard=ch.freeboard,
+                    lining_thickness=ch.lining_thickness,
+                    resolution_m=ch.resolution_m,
+                )
+                self.report({"INFO"}, f"Using parameters from channel '{channel_obj.name}'")
+            else:
+                # Fall back to scene settings
+                channel_params = ChannelParams(
+                    section_type=section_type_map.get(settings.section_type, SectionType.TRAPEZOIDAL),
+                    bottom_width=settings.bottom_width,
+                    side_slope=settings.side_slope,
+                    height=settings.height,
+                    freeboard=settings.freeboard,
+                    lining_thickness=settings.lining_thickness,
+                    resolution_m=settings.resolution_m,
+                )
 
             # Create CFD parameters
             fill_mode_map = {
@@ -111,8 +147,9 @@ class CADHY_OT_BuildCFDDomain(Operator):
             cfd_settings.cadhy_version = CADHY_VERSION_STRING
             cfd_settings.is_cadhy_object = True
 
-            # Select the created object
-            bpy.ops.object.select_all(action="DESELECT")
+            # Select the created object (using direct API, not operators)
+            for obj in context.selected_objects:
+                obj.select_set(False)
             domain_obj.select_set(True)
             context.view_layer.objects.active = domain_obj
 

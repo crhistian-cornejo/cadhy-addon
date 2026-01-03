@@ -5,6 +5,24 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.2.2] - 2026-01-03
+
+### Fixed
+- **Setup Render Error**: Fixed `module 'bpy' has no attribute 'mathutils'` error
+  - Changed `bpy.mathutils.Vector` to `mathutils.Vector` with proper import
+  - Fixed vector operations for camera positioning and bounding box calculations
+
+- **CFD Domain Parameters**: CFD domain now uses channel object parameters
+  - Automatically detects existing channel for the same axis curve
+  - Uses stored parameters from channel object instead of scene settings
+  - Falls back to scene settings if no channel exists
+  - Reports which parameter source is being used
+
+- **CFD Domain Selection**: Fixed potential context error with `bpy.ops.object.select_all`
+  - Replaced operator call with direct API for object selection (same fix as Build Channel)
+
+---
+
 ## [0.2.1] - 2026-01-03
 
 ### Fixed

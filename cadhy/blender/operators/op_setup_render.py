@@ -8,6 +8,7 @@ import math
 import bpy
 from bpy.props import BoolProperty, FloatProperty
 from bpy.types import Operator
+from mathutils import Vector
 
 from ...core.util.logging import OperationLogger
 
@@ -56,7 +57,7 @@ class CADHY_OT_SetupRender(Operator):
 
                 for obj in cadhy_objects:
                     for corner in obj.bound_box:
-                        world_corner = obj.matrix_world @ bpy.mathutils.Vector(corner)
+                        world_corner = obj.matrix_world @ Vector(corner)
                         for i in range(3):
                             min_co[i] = min(min_co[i], world_corner[i])
                             max_co[i] = max(max_co[i], world_corner[i])
@@ -84,7 +85,7 @@ class CADHY_OT_SetupRender(Operator):
                 cam_obj.location = (center[0] + distance * 0.7, center[1] - distance, center[2] + distance * 0.5)
 
                 # Point at center
-                direction = bpy.mathutils.Vector(center) - cam_obj.location
+                direction = Vector(center) - cam_obj.location
                 rot_quat = direction.to_track_quat("-Z", "Y")
                 cam_obj.rotation_euler = rot_quat.to_euler()
 
