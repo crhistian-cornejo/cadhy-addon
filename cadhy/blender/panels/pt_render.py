@@ -91,9 +91,9 @@ class CADHY_OT_ToggleShading(bpy.types.Operator):
 
     type: bpy.props.EnumProperty(
         items=[
-            ("SOLID", "Solid", ""),
-            ("MATERIAL", "Material", ""),
-            ("RENDERED", "Rendered", ""),
+            ("SOLID", "Solid", "Solid viewport shading"),
+            ("MATERIAL", "Material", "Material preview shading"),
+            ("RENDERED", "Rendered", "Rendered viewport shading"),
         ],
         default="SOLID",
     )
