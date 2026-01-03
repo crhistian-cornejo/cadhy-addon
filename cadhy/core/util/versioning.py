@@ -3,9 +3,8 @@ Versioning Module
 Version information and compatibility checking.
 """
 
-from typing import Tuple, Optional
 import sys
-
+from typing import Optional, Tuple
 
 # CADHY Version
 CADHY_VERSION = (0, 1, 0)
@@ -31,45 +30,47 @@ def get_version_tuple() -> Tuple[int, int, int]:
 def get_blender_version() -> Tuple[int, int, int]:
     """
     Get current Blender version.
-    
+
     Returns:
         Blender version tuple (major, minor, patch)
     """
     import bpy
+
     return bpy.app.version
 
 
 def get_blender_version_string() -> str:
     """Get Blender version as string."""
     import bpy
+
     return bpy.app.version_string
 
 
 def check_blender_compatibility() -> Tuple[bool, str]:
     """
     Check if current Blender version is compatible.
-    
+
     Returns:
         Tuple of (is_compatible, message)
     """
     import bpy
-    
+
     current = bpy.app.version
-    
+
     if current < MIN_BLENDER_VERSION:
         return (
             False,
             f"CADHY requires Blender {'.'.join(map(str, MIN_BLENDER_VERSION))} or higher. "
-            f"Current version: {bpy.app.version_string}"
+            f"Current version: {bpy.app.version_string}",
         )
-    
+
     if current < RECOMMENDED_BLENDER_VERSION:
         return (
             True,
             f"CADHY recommends Blender {'.'.join(map(str, RECOMMENDED_BLENDER_VERSION))} or higher. "
-            f"Current version: {bpy.app.version_string}. Some features may not work correctly."
+            f"Current version: {bpy.app.version_string}. Some features may not work correctly.",
         )
-    
+
     return (True, "Blender version is compatible")
 
 
@@ -81,13 +82,14 @@ def get_python_version() -> str:
 def get_system_info() -> dict:
     """
     Get system information for debugging.
-    
+
     Returns:
         Dictionary with system info
     """
-    import bpy
     import platform
-    
+
+    import bpy
+
     return {
         "cadhy_version": CADHY_VERSION_STRING,
         "blender_version": bpy.app.version_string,
@@ -114,15 +116,15 @@ def format_system_info() -> str:
 
 class VersionMigration:
     """Handle version migrations for saved data."""
-    
+
     @staticmethod
     def get_data_version(obj) -> Optional[Tuple[int, int, int]]:
         """
         Get version of CADHY data stored on object.
-        
+
         Args:
             obj: Blender object
-            
+
         Returns:
             Version tuple or None
         """
@@ -131,28 +133,28 @@ class VersionMigration:
             try:
                 parts = version_str.split(".")
                 return tuple(int(p) for p in parts)
-            except:
+            except Exception:
                 return None
         return None
-    
+
     @staticmethod
     def set_data_version(obj) -> None:
         """
         Set current CADHY version on object.
-        
+
         Args:
             obj: Blender object
         """
         obj["cadhy_version"] = CADHY_VERSION_STRING
-    
+
     @staticmethod
     def needs_migration(obj) -> bool:
         """
         Check if object data needs migration.
-        
+
         Args:
             obj: Blender object
-            
+
         Returns:
             True if migration needed
         """
@@ -160,15 +162,15 @@ class VersionMigration:
         if data_version is None:
             return True
         return data_version < CADHY_VERSION
-    
+
     @staticmethod
     def migrate(obj) -> bool:
         """
         Migrate object data to current version.
-        
+
         Args:
             obj: Blender object
-            
+
         Returns:
             True if migration successful
         """

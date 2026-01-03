@@ -6,18 +6,17 @@ Based on CGCookie's blender-addon-updater pattern.
 https://github.com/CGCookie/blender-addon-updater
 """
 
-import os
 import json
-import urllib.request
-import urllib.error
-import zipfile
+import os
 import shutil
 import tempfile
-from typing import Optional, Tuple, Dict, Any
+import urllib.error
+import urllib.request
+import zipfile
 from dataclasses import dataclass
+from typing import Optional, Tuple
 
 from ..core.util.versioning import CADHY_VERSION, CADHY_VERSION_STRING
-
 
 # GitHub repository info
 GITHUB_USER = "crhistian-cornejo"
@@ -28,6 +27,7 @@ GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/rele
 @dataclass
 class ReleaseInfo:
     """Information about a GitHub release."""
+
     version: Tuple[int, int, int]
     version_string: str
     tag_name: str
@@ -40,172 +40,171 @@ class AddonUpdater:
     """
     Handles checking for and installing addon updates.
     """
-    
+
     def __init__(self):
         self._latest_release: Optional[ReleaseInfo] = None
         self._update_available: bool = False
         self._last_check: Optional[str] = None
         self._error: Optional[str] = None
-    
+
     @property
     def update_available(self) -> bool:
         """Check if an update is available."""
         return self._update_available
-    
+
     @property
     def latest_release(self) -> Optional[ReleaseInfo]:
         """Get latest release info."""
         return self._latest_release
-    
+
     @property
     def error(self) -> Optional[str]:
         """Get last error message."""
         return self._error
-    
+
     def check_for_updates(self, timeout: int = 10) -> bool:
         """
         Check GitHub for available updates.
-        
+
         Args:
             timeout: Request timeout in seconds
-            
+
         Returns:
             True if check was successful
         """
         self._error = None
-        
+
         try:
             # Create request with headers
             request = urllib.request.Request(
                 GITHUB_API_URL,
                 headers={
-                    'User-Agent': f'CADHY-Addon/{CADHY_VERSION_STRING}',
-                    'Accept': 'application/vnd.github.v3+json',
-                }
+                    "User-Agent": f"CADHY-Addon/{CADHY_VERSION_STRING}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
             )
-            
+
             # Make request
             with urllib.request.urlopen(request, timeout=timeout) as response:
-                data = json.loads(response.read().decode('utf-8'))
-            
+                data = json.loads(response.read().decode("utf-8"))
+
             # Parse release info
-            tag_name = data.get('tag_name', '')
-            version_string = tag_name.lstrip('v')
-            
+            tag_name = data.get("tag_name", "")
+            version_string = tag_name.lstrip("v")
+
             # Parse version tuple
             try:
-                version_parts = version_string.split('.')
+                version_parts = version_string.split(".")
                 version = tuple(int(p) for p in version_parts[:3])
-            except:
+            except Exception:
                 version = (0, 0, 0)
-            
+
             # Find download URL (look for .zip asset)
             download_url = None
-            for asset in data.get('assets', []):
-                if asset.get('name', '').endswith('.zip'):
-                    download_url = asset.get('browser_download_url')
+            for asset in data.get("assets", []):
+                if asset.get("name", "").endswith(".zip"):
+                    download_url = asset.get("browser_download_url")
                     break
-            
+
             # Fallback to zipball
             if not download_url:
-                download_url = data.get('zipball_url')
-            
+                download_url = data.get("zipball_url")
+
             self._latest_release = ReleaseInfo(
                 version=version,
                 version_string=version_string,
                 tag_name=tag_name,
                 download_url=download_url,
-                release_notes=data.get('body', ''),
-                published_at=data.get('published_at', ''),
+                release_notes=data.get("body", ""),
+                published_at=data.get("published_at", ""),
             )
-            
+
             # Check if update is available
             self._update_available = version > CADHY_VERSION
-            
+
             from datetime import datetime
+
             self._last_check = datetime.now().isoformat()
-            
+
             return True
-            
+
         except urllib.error.URLError as e:
             self._error = f"Network error: {e.reason}"
         except json.JSONDecodeError:
             self._error = "Invalid response from GitHub"
         except Exception as e:
             self._error = f"Update check failed: {str(e)}"
-        
+
         return False
-    
+
     def download_update(self, download_dir: Optional[str] = None) -> Optional[str]:
         """
         Download the latest release.
-        
+
         Args:
             download_dir: Directory to download to (uses temp if None)
-            
+
         Returns:
             Path to downloaded zip file or None
         """
         if not self._latest_release or not self._latest_release.download_url:
             self._error = "No release available to download"
             return None
-        
+
         if download_dir is None:
             download_dir = tempfile.gettempdir()
-        
+
         try:
             filename = f"cadhy-{self._latest_release.version_string}.zip"
             filepath = os.path.join(download_dir, filename)
-            
+
             # Download file
             request = urllib.request.Request(
-                self._latest_release.download_url,
-                headers={'User-Agent': f'CADHY-Addon/{CADHY_VERSION_STRING}'}
+                self._latest_release.download_url, headers={"User-Agent": f"CADHY-Addon/{CADHY_VERSION_STRING}"}
             )
-            
+
             with urllib.request.urlopen(request) as response:
-                with open(filepath, 'wb') as f:
+                with open(filepath, "wb") as f:
                     f.write(response.read())
-            
+
             return filepath
-            
+
         except Exception as e:
             self._error = f"Download failed: {str(e)}"
             return None
-    
+
     def install_update(self, zip_path: str) -> bool:
         """
         Install update from downloaded zip file.
-        
+
         Args:
             zip_path: Path to downloaded zip file
-            
+
         Returns:
             True if installation successful
         """
-        import bpy
-        
+
         try:
             # Get addon directory
             addon_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             parent_dir = os.path.dirname(addon_dir)
-            
+
             # Create backup
             backup_dir = os.path.join(parent_dir, "cadhy_backup")
             if os.path.exists(backup_dir):
                 shutil.rmtree(backup_dir)
             shutil.copytree(addon_dir, backup_dir)
-            
+
             # Extract new version
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 # Find the root folder in zip
                 names = zip_ref.namelist()
-                root_folder = names[0].split('/')[0] if names else ''
-                
+                root_folder = names[0].split("/")[0] if names else ""
+
                 # Extract to temp location
                 temp_extract = os.path.join(parent_dir, "cadhy_temp")
                 zip_ref.extractall(temp_extract)
-                
+
                 # Move extracted content
                 extracted_addon = os.path.join(temp_extract, root_folder)
                 if os.path.exists(extracted_addon):
@@ -213,42 +212,42 @@ class AddonUpdater:
                     shutil.rmtree(addon_dir)
                     # Move new addon
                     shutil.move(extracted_addon, addon_dir)
-                
+
                 # Cleanup temp
                 if os.path.exists(temp_extract):
                     shutil.rmtree(temp_extract)
-            
+
             # Remove backup on success
             if os.path.exists(backup_dir):
                 shutil.rmtree(backup_dir)
-            
+
             return True
-            
+
         except Exception as e:
             self._error = f"Installation failed: {str(e)}"
-            
+
             # Try to restore backup
             try:
                 if os.path.exists(backup_dir):
                     if os.path.exists(addon_dir):
                         shutil.rmtree(addon_dir)
                     shutil.move(backup_dir, addon_dir)
-            except:
+            except Exception:
                 pass
-            
+
             return False
-    
+
     def get_status_message(self) -> str:
         """Get human-readable status message."""
         if self._error:
             return f"Error: {self._error}"
-        
+
         if self._update_available and self._latest_release:
             return f"Update available: v{self._latest_release.version_string}"
-        
+
         if self._latest_release:
             return f"Up to date (v{CADHY_VERSION_STRING})"
-        
+
         return "Update status unknown"
 
 

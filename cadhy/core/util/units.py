@@ -4,11 +4,11 @@ Unit conversion and handling utilities.
 """
 
 from enum import Enum
-from typing import Tuple
 
 
 class LengthUnit(Enum):
     """Length units."""
+
     METERS = "m"
     CENTIMETERS = "cm"
     MILLIMETERS = "mm"
@@ -18,6 +18,7 @@ class LengthUnit(Enum):
 
 class AreaUnit(Enum):
     """Area units."""
+
     SQUARE_METERS = "m²"
     SQUARE_CENTIMETERS = "cm²"
     SQUARE_FEET = "ft²"
@@ -25,6 +26,7 @@ class AreaUnit(Enum):
 
 class VolumeUnit(Enum):
     """Volume units."""
+
     CUBIC_METERS = "m³"
     LITERS = "L"
     CUBIC_FEET = "ft³"
@@ -59,12 +61,12 @@ VOLUME_TO_CU_METERS = {
 def convert_length(value: float, from_unit: LengthUnit, to_unit: LengthUnit) -> float:
     """
     Convert length between units.
-    
+
     Args:
         value: Value to convert
         from_unit: Source unit
         to_unit: Target unit
-        
+
     Returns:
         Converted value
     """
@@ -77,12 +79,12 @@ def convert_length(value: float, from_unit: LengthUnit, to_unit: LengthUnit) -> 
 def convert_area(value: float, from_unit: AreaUnit, to_unit: AreaUnit) -> float:
     """
     Convert area between units.
-    
+
     Args:
         value: Value to convert
         from_unit: Source unit
         to_unit: Target unit
-        
+
     Returns:
         Converted value
     """
@@ -93,12 +95,12 @@ def convert_area(value: float, from_unit: AreaUnit, to_unit: AreaUnit) -> float:
 def convert_volume(value: float, from_unit: VolumeUnit, to_unit: VolumeUnit) -> float:
     """
     Convert volume between units.
-    
+
     Args:
         value: Value to convert
         from_unit: Source unit
         to_unit: Target unit
-        
+
     Returns:
         Converted value
     """
@@ -124,22 +126,23 @@ def format_volume(value: float, unit: VolumeUnit = VolumeUnit.CUBIC_METERS, deci
 def get_blender_unit_scale() -> float:
     """
     Get Blender's current unit scale.
-    
+
     Returns:
         Scale factor (1.0 if meters)
     """
     import bpy
+
     return bpy.context.scene.unit_settings.scale_length
 
 
 def apply_unit_scale(value: float, inverse: bool = False) -> float:
     """
     Apply Blender's unit scale to a value.
-    
+
     Args:
         value: Value to scale
         inverse: If True, divide instead of multiply
-        
+
     Returns:
         Scaled value
     """

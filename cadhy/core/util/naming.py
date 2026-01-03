@@ -3,9 +3,6 @@ Naming Module
 Consistent naming conventions for CADHY objects.
 """
 
-from typing import Optional
-
-
 # Prefixes for different object types
 PREFIX_CHANNEL = "CADHY_Channel"
 PREFIX_CFD_DOMAIN = "CADHY_CFD_Domain"
@@ -25,10 +22,10 @@ MAT_PREFIX = "CADHY_Mat"
 def get_channel_name(axis_name: str) -> str:
     """
     Generate channel object name from axis name.
-    
+
     Args:
         axis_name: Name of the axis curve
-        
+
     Returns:
         Channel object name
     """
@@ -40,10 +37,10 @@ def get_channel_name(axis_name: str) -> str:
 def get_cfd_domain_name(axis_name: str) -> str:
     """
     Generate CFD domain object name from axis name.
-    
+
     Args:
         axis_name: Name of the axis curve
-        
+
     Returns:
         CFD domain object name
     """
@@ -54,11 +51,11 @@ def get_cfd_domain_name(axis_name: str) -> str:
 def get_section_name(axis_name: str, station: float) -> str:
     """
     Generate section object name.
-    
+
     Args:
         axis_name: Name of the axis curve
         station: Station/chainage in meters
-        
+
     Returns:
         Section object name
     """
@@ -69,10 +66,10 @@ def get_section_name(axis_name: str, station: float) -> str:
 def get_material_name(material_type: str) -> str:
     """
     Generate material name.
-    
+
     Args:
         material_type: Type of material (e.g., 'concrete', 'water')
-        
+
     Returns:
         Material name
     """
@@ -82,30 +79,25 @@ def get_material_name(material_type: str) -> str:
 def parse_cadhy_name(name: str) -> dict:
     """
     Parse a CADHY object name to extract components.
-    
+
     Args:
         name: Object name
-        
+
     Returns:
         Dictionary with parsed components
     """
-    result = {
-        "is_cadhy": False,
-        "type": None,
-        "base_name": None,
-        "station": None
-    }
-    
+    result = {"is_cadhy": False, "type": None, "base_name": None, "station": None}
+
     if not name.startswith("CADHY_"):
         return result
-    
+
     result["is_cadhy"] = True
-    
+
     parts = name.split("_")
-    
+
     if len(parts) >= 2:
         type_part = parts[1]
-        
+
         if type_part == "Channel":
             result["type"] = "channel"
             result["base_name"] = "_".join(parts[2:])
@@ -131,46 +123,45 @@ def parse_cadhy_name(name: str) -> dict:
         elif type_part == "Mat":
             result["type"] = "material"
             result["base_name"] = "_".join(parts[2:])
-    
+
     return result
 
 
-def ensure_collection(collection_name: str) -> 'bpy.types.Collection':
+def ensure_collection(collection_name: str) -> "bpy.types.Collection":
     """
     Get or create a collection by name.
-    
+
     Args:
         collection_name: Name of collection
-        
+
     Returns:
         Blender collection object
     """
     import bpy
-    
+
     if collection_name not in bpy.data.collections:
         collection = bpy.data.collections.new(collection_name)
         bpy.context.scene.collection.children.link(collection)
     else:
         collection = bpy.data.collections[collection_name]
-    
+
     return collection
 
 
 def move_to_collection(obj, collection_name: str) -> None:
     """
     Move object to specified collection.
-    
+
     Args:
         obj: Blender object
         collection_name: Target collection name
     """
-    import bpy
-    
+
     collection = ensure_collection(collection_name)
-    
+
     # Remove from all current collections
     for coll in obj.users_collection:
         coll.objects.unlink(obj)
-    
+
     # Add to target collection
     collection.objects.link(obj)

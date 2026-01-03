@@ -46,7 +46,11 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # Line too long
+    "E402",   # Module level import not at top (needed for bl_info)
+    "F821",   # Undefined name (bpy in type hints - available at runtime)
+]
 
 [tool.pytest.ini_options]
 testpaths = ["cadhy/tests"]
