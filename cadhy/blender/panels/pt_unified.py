@@ -230,9 +230,15 @@ class CADHY_PT_Unified(Panel):
 
         # Subdivide options
         col.separator()
-        col.prop(source, "subdivide_profile", text="Subdivide Profile")
+        row = col.row(align=True)
+        row.prop(source, "subdivide_profile", text="Subdivide")
         if getattr(source, "subdivide_profile", True):
-            col.prop(source, "profile_resolution", text="Profile Res.")
+            row.prop(source, "profile_resolution", text="")
+            # Hint if profile_resolution differs from resolution_m
+            res_m = getattr(source, "resolution_m", 1.0)
+            prof_res = getattr(source, "profile_resolution", 1.0)
+            if abs(res_m - prof_res) > 0.01:
+                col.label(text=f"Match to {res_m:.1f}m for square faces", icon="INFO")
 
     # ═══════════════════════════════════════════════════════════════════════
     # CFD DOMAIN SECTION
@@ -241,7 +247,7 @@ class CADHY_PT_Unified(Panel):
         """Draw CFD domain section."""
         box = layout.box()
 
-        # Header with collapse toggle and enable checkbox
+        # Header with collapse toggle and enable checkbox on right
         row = box.row()
         row.prop(
             settings,
@@ -250,8 +256,8 @@ class CADHY_PT_Unified(Panel):
             icon_only=True,
             emboss=False,
         )
-        row.prop(settings, "cfd_enabled", text="")
         row.label(text="CFD Domain", icon="MOD_FLUIDSIM")
+        row.prop(settings, "cfd_enabled", text="")
 
         if not settings.ui_show_cfd:
             return
@@ -283,6 +289,14 @@ class CADHY_PT_Unified(Panel):
         sub.label(text="Mesh:", icon="MESH_GRID")
         sub.prop(settings, "cfd_mesh_type", text="")
         sub.prop(settings, "cfd_mesh_size", text="Size")
+
+        # Note: mesh type applies when building/rebuilding CFD domain
+        if cfd_domain_exists:
+            cfd_obj = bpy.data.objects.get(cfd_domain_name)
+            if cfd_obj and hasattr(cfd_obj, "cadhy_cfd"):
+                current_type = cfd_obj.cadhy_cfd.mesh_type
+                if current_type != settings.cfd_mesh_type:
+                    sub.label(text="Rebuild to apply type", icon="INFO")
 
         # Boundary conditions (compact)
         col.separator()
@@ -520,15 +534,12 @@ class CADHY_PT_Unified(Panel):
         # Format selection
         col.prop(settings, "export_format", text="Format")
 
-        # Export buttons
+        # Export buttons - 3D mesh export only
+        # PDF/JSON reports are in the Pie Menu (Alt+C) under Reports
         col.separator()
         row = col.row(align=True)
         row.operator("cadhy.export_cfd", text="CFD Mesh", icon="EXPORT")
         row.operator("cadhy.export_cfd_template", text="Template", icon="PRESET")
-
-        row = col.row(align=True)
-        row.operator("cadhy.export_report", text="JSON", icon="FILE").format = "JSON"
-        row.operator("cadhy.export_report", text="PDF", icon="FILE").format = "PDF"
 
         col.separator()
         row = col.row()

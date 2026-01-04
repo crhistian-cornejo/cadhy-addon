@@ -181,11 +181,18 @@ class CADHY_OT_BuildCFDDomain(Operator):
                 cfd_settings.bc_top_type = settings.bc_top_type
 
                 # Select the created object (using direct API, not operators)
+                # Handle case where object may be in excluded collection
                 wm.progress_update(95)
-                for obj in context.selected_objects:
-                    obj.select_set(False)
-                domain_obj.select_set(True)
-                context.view_layer.objects.active = domain_obj
+                try:
+                    for obj in context.selected_objects:
+                        obj.select_set(False)
+                    # Only try to select if object is in view layer
+                    if domain_obj.name in context.view_layer.objects:
+                        domain_obj.select_set(True)
+                        context.view_layer.objects.active = domain_obj
+                except RuntimeError:
+                    # Object not in ViewLayer - this is OK, just skip selection
+                    pass
 
                 # Report validation status
                 if cfd_info.is_valid:

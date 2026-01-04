@@ -5,6 +5,37 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.8] - 2026-01-03
+
+### Fixed
+
+- **CFD Domain ViewLayer Error**: Fixed "Object cannot be selected because it is not in View Layer" error
+  - Handles objects in excluded collections gracefully
+  - Uses try/catch and view layer check before selection
+
+- **PIPE Section Geometry**: Fixed pipe sections appearing as two open surfaces
+  - Added annular end caps to close pipe geometry
+  - Pipe now generates as closed solid mesh suitable for CFD
+
+- **Export Panel Organization**: Removed PDF and JSON buttons from Export panel
+  - Report exports now only accessible via Pie Menu (Alt+C → Export → Reports)
+  - Export panel focuses on 3D mesh export (CFD Mesh, Template, Export All)
+
+- **Mesh Type Feedback**: Added "Rebuild to apply type" hint in CFD section
+  - Shows when mesh type differs between settings and built domain
+  - Clarifies that changing TRI/QUAD requires rebuilding CFD domain
+
+### Changed
+
+- **CFD Checkbox Position**: Moved enable/disable checkbox to right side of header
+  - Better alignment with standard Blender panel conventions
+
+- **Subdivision Profile UI**: Improved profile subdivision controls
+  - More compact layout with inline checkbox and resolution field
+  - Added hint when profile resolution differs from axis resolution
+
+---
+
 ## [0.3.7] - 2026-01-03
 
 ### Added

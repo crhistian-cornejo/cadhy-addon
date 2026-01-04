@@ -1020,9 +1020,60 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
     # Add end caps for lining (close the start and end of the channel)
     # Skip end caps for cyclic curves - they form a complete loop
     if has_lining and not is_cyclic:
-        _add_lining_end_caps(faces, num_samples, total_verts_per_section, num_inner_verts, is_open_channel, edge_info)
+        if params.section_type == SectionType.PIPE:
+            # PIPE: add annular end caps (ring between inner and outer circles)
+            _add_pipe_end_caps(faces, num_samples, total_verts_per_section, num_inner_verts, num_outer_verts)
+        else:
+            _add_lining_end_caps(
+                faces, num_samples, total_verts_per_section, num_inner_verts, is_open_channel, edge_info
+            )
 
     return vertices, faces
+
+
+def _add_pipe_end_caps(
+    faces: List[Tuple[int, ...]],
+    num_samples: int,
+    total_verts_per_section: int,
+    num_inner_verts: int,
+    num_outer_verts: int,
+) -> None:
+    """
+    Add annular end caps to close a pipe section.
+
+    Creates ring faces connecting inner circle to outer circle at both ends.
+    This makes the pipe a solid closed mesh suitable for CFD.
+    """
+    outer_offset = num_inner_verts
+
+    # Start cap (first section) - connect inner to outer with annular ring
+    base_start = 0
+    for j in range(num_inner_verts):
+        j_next = (j + 1) % num_inner_verts
+        # Create quad from inner edge to outer edge
+        # Winding: inner_j -> inner_j_next -> outer_j_next -> outer_j
+        faces.append(
+            (
+                base_start + j,  # Inner j
+                base_start + j_next,  # Inner j+1
+                base_start + outer_offset + j_next,  # Outer j+1
+                base_start + outer_offset + j,  # Outer j
+            )
+        )
+
+    # End cap (last section) - reversed winding for outward normals
+    base_end = (num_samples - 1) * total_verts_per_section
+    for j in range(num_inner_verts):
+        j_next = (j + 1) % num_inner_verts
+        # Reversed winding: inner_j -> outer_j -> outer_j_next -> inner_j_next
+        faces.append(
+            (
+                base_end + j,  # Inner j
+                base_end + outer_offset + j,  # Outer j
+                base_end + outer_offset + j_next,  # Outer j+1
+                base_end + j_next,  # Inner j+1
+            )
+        )
 
 
 def _add_lining_end_caps(
