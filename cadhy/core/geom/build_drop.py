@@ -3,13 +3,55 @@ Build Drop Module
 Geometry generation for hydraulic drop structures.
 """
 
-from typing import List, Tuple
+from typing import List, Set, Tuple
 
 from mathutils import Vector
 
-from ..model.channel_params import ChannelParams
+from ..model.channel_params import ChannelParams, SectionType
 from ..model.drop_structures import DropStructure, DropType
 from .build_channel import generate_section_vertices_with_lining
+
+
+def _get_open_edges(params: ChannelParams, n_section: int) -> Set[int]:
+    """
+    Determine which edge indices should be skipped for open channels.
+
+    For open channels (TRAP, RECT, TRIANGULAR), we skip the "top" edge
+    that represents the open water surface. For closed sections (PIPE, CIRCULAR),
+    we may skip different edges or none.
+
+    Args:
+        params: Channel parameters
+        n_section: Number of vertices in the section profile
+
+    Returns:
+        Set of edge indices to skip (edge j connects vertex j to vertex (j+1) % n)
+    """
+    section_type = params.section_type
+
+    if section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR):
+        # Profile: BL(0), BR(1), TR(2), TL(3)
+        # Edge 2: TR->TL (top edge) - SKIP (open channel)
+        # For subdivided profiles, last 2 vertices are still TR, TL
+        return {n_section - 2}  # Skip only the top edge (TR->TL)
+
+    elif section_type == SectionType.TRIANGULAR:
+        # Profile: apex(0), TR(1), TL(2)
+        # Edge 1: TR->TL (top edge) - SKIP
+        # For subdivided, last 2 vertices are TR, TL
+        return {n_section - 2}  # Skip the top edge (TR->TL)
+
+    elif section_type == SectionType.CIRCULAR:
+        # Half-circle (open channel)
+        # The top edge connects the two top vertices (at water level)
+        return {n_section - 1}  # Skip the edge connecting last to first
+
+    elif section_type == SectionType.PIPE:
+        # Full circle (closed pipe) - no edges to skip for drop walls
+        return set()
+
+    else:
+        return set()
 
 
 def generate_drop_geometry(
@@ -83,14 +125,15 @@ def _generate_vertical_drop(
         vertices.append(world_pos)
 
     n_section = len(inner_verts)
+    open_edges = _get_open_edges(params, n_section)
 
     # Create faces connecting upper to lower (the vertical drop wall)
     # This creates the inner face of the drop
     for j in range(n_section):
         j_next = (j + 1) % n_section
 
-        # Skip the top edge (open channel)
-        if j >= n_section - 2:
+        # Skip the open channel top edge
+        if j in open_edges:
             continue
 
         # Quad face: upper[j], upper[j+1], lower[j+1], lower[j]
@@ -116,11 +159,12 @@ def _generate_vertical_drop(
             vertices.append(world_pos)
 
         n_outer = len(outer_verts)
+        outer_open_edges = _get_open_edges(params, n_outer)
 
         # Outer wall faces (reversed winding for outward normal)
         for j in range(n_outer):
             j_next = (j + 1) % n_outer
-            if j >= n_outer - 2:
+            if j in outer_open_edges:
                 continue
             faces.append(
                 (
@@ -158,6 +202,7 @@ def _generate_inclined_drop(
     num_segments = max(3, int(drop.length / params.resolution_m))
 
     n_section = len(inner_verts)
+    open_edges = _get_open_edges(params, n_section)
     section_start_indices = []
 
     # Generate sections along the ramp
@@ -182,8 +227,8 @@ def _generate_inclined_drop(
         for j in range(n_section):
             j_next = (j + 1) % n_section
 
-            # Skip top edge
-            if j >= n_section - 2:
+            # Skip open channel top edge
+            if j in open_edges:
                 continue
 
             faces.append(
@@ -198,6 +243,7 @@ def _generate_inclined_drop(
     # Add outer surface if lining exists
     if outer_verts:
         n_outer = len(outer_verts)
+        outer_open_edges = _get_open_edges(params, n_outer)
         outer_section_starts = []
 
         for i in range(num_segments + 1):
@@ -217,7 +263,7 @@ def _generate_inclined_drop(
 
             for j in range(n_outer):
                 j_next = (j + 1) % n_outer
-                if j >= n_outer - 2:
+                if j in outer_open_edges:
                     continue
                 # Reversed winding for outer surface
                 faces.append(
@@ -251,6 +297,7 @@ def _generate_stepped_drop(
 
     inner_verts, outer_verts = generate_section_vertices_with_lining(params)
     n_section = len(inner_verts)
+    open_edges = _get_open_edges(params, n_section)
 
     step_height = drop.step_height
     step_length = drop.step_length
@@ -302,7 +349,7 @@ def _generate_stepped_drop(
         if top_of_step is not None and bottom_of_riser is not None:
             for j in range(n_section):
                 j_next = (j + 1) % n_section
-                if j >= n_section - 2:
+                if j in open_edges:
                     continue
                 faces.append(
                     (
@@ -317,7 +364,7 @@ def _generate_stepped_drop(
         if bottom_of_riser is not None and top_of_next is not None:
             for j in range(n_section):
                 j_next = (j + 1) % n_section
-                if j >= n_section - 2:
+                if j in open_edges:
                     continue
                 faces.append(
                     (

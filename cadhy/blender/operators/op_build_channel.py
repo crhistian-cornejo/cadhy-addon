@@ -63,6 +63,18 @@ class CADHY_OT_BuildChannel(Operator):
                     "PIPE": SectionType.PIPE,
                 }
 
+                # Check if transitions are enabled - if so, disable profile subdivision
+                # to ensure consistent vertex count across the channel
+                has_transitions = settings.transitions_enabled and len(settings.transitions) > 0
+                has_drops = settings.drops_enabled and len(settings.drops) > 0
+
+                # Disable subdivide_profile when transitions are active to avoid
+                # vertex count mismatches between different sections
+                # Also disable for drops since drop geometry assumes fixed vertex count
+                use_subdivide_profile = getattr(settings, "subdivide_profile", True)
+                if has_transitions or has_drops:
+                    use_subdivide_profile = False
+
                 params = ChannelParams(
                     section_type=section_type_map.get(settings.section_type, SectionType.TRAPEZOIDAL),
                     bottom_width=settings.bottom_width,
@@ -71,13 +83,13 @@ class CADHY_OT_BuildChannel(Operator):
                     freeboard=settings.freeboard,
                     lining_thickness=settings.lining_thickness,
                     resolution_m=settings.resolution_m,
-                    subdivide_profile=getattr(settings, "subdivide_profile", True),
+                    subdivide_profile=use_subdivide_profile,
                     profile_resolution=getattr(settings, "profile_resolution", settings.resolution_m),
                 )
 
                 # Build alignment with transitions if enabled
                 alignment = None
-                if settings.transitions_enabled and len(settings.transitions) > 0:
+                if has_transitions:
                     alignment = ChannelAlignment(base_params=params)
                     for trans in settings.transitions:
                         # Determine target values based on vary flags

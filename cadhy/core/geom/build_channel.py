@@ -1116,93 +1116,146 @@ def _add_lining_end_caps(
     base_start = 0
 
     if is_open_channel:
-        bottom_start, bottom_end = edge_info["bottom"]
-        right_start, right_end = edge_info["right_wall"]
-        tl_idx = edge_info["top_left"]
-        bl_idx = 0
-        # Note: tr_idx = edge_info["top_right"], br_idx = bottom_end (unused but documented)
+        # Check if this is a triangular section (different edge structure)
+        if edge_info.get("triangular", False):
+            # TRIANGULAR sections
+            right_start, right_end = edge_info["right_slope"]
+            tl_idx = edge_info["top_left"]
+            apex_idx = 0  # apex is at index 0
 
-        # For open channels with subdivision, we need to create caps that
-        # connect inner to outer at each edge
+            # Right slope cap: connect inner to outer along right slope
+            for j in range(right_start, right_end):
+                j_next = j + 1
+                faces.append(
+                    (
+                        base_start + j,
+                        base_start + j_next,
+                        base_start + outer_offset + j_next,
+                        base_start + outer_offset + j,
+                    )
+                )
 
-        # Bottom cap: connect inner bottom edge to outer bottom edge
-        # This creates a strip of quads along the bottom
-        for j in range(bottom_start, bottom_end):
-            j_next = j + 1
+            # Left slope cap: from TL back to apex
             faces.append(
                 (
-                    base_start + j,  # Inner
-                    base_start + outer_offset + j,  # Outer
-                    base_start + outer_offset + j_next,  # Outer next
-                    base_start + j_next,  # Inner next
+                    base_start + apex_idx,
+                    base_start + outer_offset + apex_idx,
+                    base_start + outer_offset + tl_idx,
+                    base_start + tl_idx,
                 )
             )
+        else:
+            # TRAPEZOIDAL / RECTANGULAR sections
+            bottom_start, bottom_end = edge_info["bottom"]
+            right_start, right_end = edge_info["right_wall"]
+            tl_idx = edge_info["top_left"]
+            bl_idx = 0
 
-        # Right wall cap: connect inner right wall to outer right wall
-        for j in range(right_start, right_end):
-            j_next = j + 1
+            # Bottom cap: connect inner bottom edge to outer bottom edge
+            for j in range(bottom_start, bottom_end):
+                j_next = j + 1
+                faces.append(
+                    (
+                        base_start + j,
+                        base_start + outer_offset + j,
+                        base_start + outer_offset + j_next,
+                        base_start + j_next,
+                    )
+                )
+
+            # Right wall cap: connect inner right wall to outer right wall
+            for j in range(right_start, right_end):
+                j_next = j + 1
+                faces.append(
+                    (
+                        base_start + j,
+                        base_start + j_next,
+                        base_start + outer_offset + j_next,
+                        base_start + outer_offset + j,
+                    )
+                )
+
+            # Left wall cap: from BL to TL
             faces.append(
                 (
-                    base_start + j,  # Inner
-                    base_start + j_next,  # Inner next
-                    base_start + outer_offset + j_next,  # Outer next
-                    base_start + outer_offset + j,  # Outer
+                    base_start + bl_idx,
+                    base_start + tl_idx,
+                    base_start + outer_offset + tl_idx,
+                    base_start + outer_offset + bl_idx,
                 )
             )
-
-        # Left wall cap: from BL to TL
-        faces.append(
-            (
-                base_start + bl_idx,  # Inner BL
-                base_start + tl_idx,  # Inner TL
-                base_start + outer_offset + tl_idx,  # Outer TL
-                base_start + outer_offset + bl_idx,  # Outer BL
-            )
-        )
 
     # End cap (last section)
     base_end = (num_samples - 1) * total_verts_per_section
 
     if is_open_channel:
-        bottom_start, bottom_end = edge_info["bottom"]
-        right_start, right_end = edge_info["right_wall"]
-        tl_idx = edge_info["top_left"]
-        bl_idx = 0
-        # tr_idx and br_idx are implicitly: tr_idx = edge_info["top_right"], br_idx = bottom_end
+        if edge_info.get("triangular", False):
+            # TRIANGULAR sections - end cap
+            right_start, right_end = edge_info["right_slope"]
+            tl_idx = edge_info["top_left"]
+            apex_idx = 0
 
-        # Bottom cap (reversed winding)
-        for j in range(bottom_start, bottom_end):
-            j_next = j + 1
+            # Right slope cap (reversed winding)
+            for j in range(right_start, right_end):
+                j_next = j + 1
+                faces.append(
+                    (
+                        base_end + j,
+                        base_end + outer_offset + j,
+                        base_end + outer_offset + j_next,
+                        base_end + j_next,
+                    )
+                )
+
+            # Left slope cap (reversed)
             faces.append(
                 (
-                    base_end + j_next,  # Inner next
-                    base_end + outer_offset + j_next,  # Outer next
-                    base_end + outer_offset + j,  # Outer
-                    base_end + j,  # Inner
+                    base_end + tl_idx,
+                    base_end + outer_offset + tl_idx,
+                    base_end + outer_offset + apex_idx,
+                    base_end + apex_idx,
                 )
             )
+        else:
+            # TRAPEZOIDAL / RECTANGULAR sections - end cap
+            bottom_start, bottom_end = edge_info["bottom"]
+            right_start, right_end = edge_info["right_wall"]
+            tl_idx = edge_info["top_left"]
+            bl_idx = 0
 
-        # Right wall cap (reversed)
-        for j in range(right_start, right_end):
-            j_next = j + 1
+            # Bottom cap (reversed winding)
+            for j in range(bottom_start, bottom_end):
+                j_next = j + 1
+                faces.append(
+                    (
+                        base_end + j_next,
+                        base_end + outer_offset + j_next,
+                        base_end + outer_offset + j,
+                        base_end + j,
+                    )
+                )
+
+            # Right wall cap (reversed)
+            for j in range(right_start, right_end):
+                j_next = j + 1
+                faces.append(
+                    (
+                        base_end + j,
+                        base_end + outer_offset + j,
+                        base_end + outer_offset + j_next,
+                        base_end + j_next,
+                    )
+                )
+
+            # Left wall cap (reversed)
             faces.append(
                 (
-                    base_end + j,  # Inner
-                    base_end + outer_offset + j,  # Outer
-                    base_end + outer_offset + j_next,  # Outer next
-                    base_end + j_next,  # Inner next
+                    base_end + outer_offset + bl_idx,
+                    base_end + outer_offset + tl_idx,
+                    base_end + tl_idx,
+                    base_end + bl_idx,
                 )
             )
-
-        # Left wall cap (reversed)
-        faces.append(
-            (
-                base_end + outer_offset + bl_idx,  # Outer BL
-                base_end + outer_offset + tl_idx,  # Outer TL
-                base_end + tl_idx,  # Inner TL
-                base_end + bl_idx,  # Inner BL
-            )
-        )
 
 
 def _build_channel_with_drops(

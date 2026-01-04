@@ -11,7 +11,7 @@ id = "cadhy"
 name = "CADHY"
 
 # Version following semantic versioning
-version = "0.4.0"
+version = "0.4.1"
 
 # Short description (max 64 characters)
 tagline = "Parametric hydraulic channel design and CFD domain generation"
