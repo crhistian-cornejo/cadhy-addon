@@ -1,10 +1,12 @@
 """
 Channel Parameters Module
 Defines data structures for channel section parameters.
+Includes validation system for engineering constraints.
 """
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import List, Optional, Tuple
 
 
 class SectionType(Enum):
@@ -15,6 +17,299 @@ class SectionType(Enum):
     TRIANGULAR = "TRI"
     CIRCULAR = "CIRC"
     PIPE = "PIPE"  # Commercial pipe with wall thickness
+
+
+# =============================================================================
+# VALIDATION SYSTEM
+# =============================================================================
+
+
+class ValidationLevel(Enum):
+    """Severity levels for validation messages."""
+    ERROR = "error"      # Prevents generation
+    WARNING = "warning"  # Allows generation with caution
+    INFO = "info"        # Informational only
+
+
+@dataclass
+class ValidationResult:
+    """Single validation result."""
+    level: ValidationLevel
+    code: str
+    message: str
+    field: Optional[str] = None
+    suggestion: Optional[str] = None
+
+    @property
+    def is_error(self) -> bool:
+        return self.level == ValidationLevel.ERROR
+
+    @property
+    def is_warning(self) -> bool:
+        return self.level == ValidationLevel.WARNING
+
+
+class ParameterValidator:
+    """
+    Validates channel parameters against engineering constraints.
+
+    Validation rules are based on hydraulic engineering best practices:
+    - Geometric feasibility
+    - Material constraints (pipe standards)
+    - Hydraulic efficiency ranges
+    - Mesh quality recommendations
+    """
+
+    # Parameter limits (min, max, recommended_min, recommended_max)
+    LIMITS = {
+        "bottom_width": (0.1, 100.0, 0.3, 50.0),
+        "side_slope": (0.0, 10.0, 0.5, 3.0),
+        "height": (0.1, 50.0, 0.3, 10.0),
+        "freeboard": (0.0, 10.0, 0.1, 2.0),
+        "lining_thickness": (0.0, 2.0, 0.05, 0.5),
+        "resolution_m": (0.05, 100.0, 0.1, 5.0),
+        "profile_resolution": (0.05, 10.0, 0.1, 2.0),
+    }
+
+    # Recommended side slopes by soil type (for info messages)
+    RECOMMENDED_SLOPES = {
+        "rock": (0.0, 0.25),
+        "stiff_clay": (0.5, 1.0),
+        "firm_clay": (1.0, 1.5),
+        "sandy_loam": (1.5, 2.0),
+        "sandy_soil": (2.0, 3.0),
+        "loose_sand": (3.0, 4.0),
+    }
+
+    @classmethod
+    def validate(cls, params: "ChannelParams") -> List[ValidationResult]:
+        """
+        Validate all parameters and return list of issues.
+
+        Returns:
+            List of ValidationResult objects (empty if valid)
+        """
+        results = []
+
+        # Basic geometric validation
+        results.extend(cls._validate_geometry(params))
+
+        # Section-specific validation
+        results.extend(cls._validate_section_type(params))
+
+        # Hydraulic efficiency checks
+        results.extend(cls._validate_hydraulics(params))
+
+        # Mesh quality recommendations
+        results.extend(cls._validate_mesh_settings(params))
+
+        return results
+
+    @classmethod
+    def _validate_geometry(cls, params: "ChannelParams") -> List[ValidationResult]:
+        """Validate basic geometric parameters."""
+        results = []
+
+        # Check each parameter against limits
+        for field_name, limits in cls.LIMITS.items():
+            if not hasattr(params, field_name):
+                continue
+
+            value = getattr(params, field_name)
+            min_val, max_val, rec_min, rec_max = limits
+
+            if value < min_val:
+                results.append(ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    code=f"{field_name}_below_min",
+                    message=f"{field_name} ({value:.3f}) is below minimum ({min_val})",
+                    field=field_name,
+                    suggestion=f"Set {field_name} >= {min_val}"
+                ))
+            elif value > max_val:
+                results.append(ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    code=f"{field_name}_above_max",
+                    message=f"{field_name} ({value:.3f}) exceeds maximum ({max_val})",
+                    field=field_name,
+                    suggestion=f"Set {field_name} <= {max_val}"
+                ))
+            elif value < rec_min:
+                results.append(ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    code=f"{field_name}_below_recommended",
+                    message=f"{field_name} ({value:.3f}) is below recommended ({rec_min})",
+                    field=field_name,
+                    suggestion=f"Consider {field_name} >= {rec_min} for stability"
+                ))
+            elif value > rec_max:
+                results.append(ValidationResult(
+                    level=ValidationLevel.INFO,
+                    code=f"{field_name}_above_recommended",
+                    message=f"{field_name} ({value:.3f}) is above typical ({rec_max})",
+                    field=field_name
+                ))
+
+        return results
+
+    @classmethod
+    def _validate_section_type(cls, params: "ChannelParams") -> List[ValidationResult]:
+        """Validate section-specific parameters."""
+        results = []
+
+        if params.section_type == SectionType.TRAPEZOIDAL:
+            # Check side slope feasibility
+            if params.side_slope == 0:
+                results.append(ValidationResult(
+                    level=ValidationLevel.INFO,
+                    code="trap_zero_slope",
+                    message="Trapezoidal with 0 slope is equivalent to Rectangular",
+                    field="side_slope",
+                    suggestion="Use RECT section type for vertical walls"
+                ))
+
+            # Check top width doesn't get unreasonably large
+            top_width = params.bottom_width + 2 * params.side_slope * params.total_height
+            if top_width > 50:
+                results.append(ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    code="trap_wide_top",
+                    message=f"Top width ({top_width:.1f}m) is very large",
+                    field="side_slope",
+                    suggestion="Consider reducing height or side slope"
+                ))
+
+        elif params.section_type == SectionType.TRIANGULAR:
+            # V-channels need reasonable slopes
+            if params.side_slope < 0.5:
+                results.append(ValidationResult(
+                    level=ValidationLevel.WARNING,
+                    code="tri_steep_slope",
+                    message="V-channel with very steep slopes may be unstable",
+                    field="side_slope",
+                    suggestion="Side slope >= 1.0 recommended for stability"
+                ))
+
+        elif params.section_type == SectionType.PIPE:
+            # Validate wall thickness for pipe
+            if params.lining_thickness <= 0:
+                results.append(ValidationResult(
+                    level=ValidationLevel.ERROR,
+                    code="pipe_no_wall",
+                    message="Pipe requires wall thickness > 0",
+                    field="lining_thickness",
+                    suggestion="Set wall thickness based on pipe material/SDR"
+                ))
+
+            # Check SDR ratio
+            if params.lining_thickness > 0:
+                sdr = params.bottom_width / (2 * params.lining_thickness)
+                if sdr < 9:
+                    results.append(ValidationResult(
+                        level=ValidationLevel.WARNING,
+                        code="pipe_thick_wall",
+                        message=f"SDR {sdr:.1f} indicates very thick walls",
+                        field="lining_thickness"
+                    ))
+                elif sdr > 26:
+                    results.append(ValidationResult(
+                        level=ValidationLevel.WARNING,
+                        code="pipe_thin_wall",
+                        message=f"SDR {sdr:.1f} indicates thin walls (low pressure)",
+                        field="lining_thickness"
+                    ))
+
+        return results
+
+    @classmethod
+    def _validate_hydraulics(cls, params: "ChannelParams") -> List[ValidationResult]:
+        """Validate hydraulic efficiency."""
+        results = []
+
+        # Skip for pipes (different hydraulic behavior)
+        if params.section_type == SectionType.PIPE:
+            return results
+
+        # Check aspect ratio (width/height)
+        if params.section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR):
+            aspect = params.bottom_width / params.height if params.height > 0 else 0
+
+            if aspect < 0.5:
+                results.append(ValidationResult(
+                    level=ValidationLevel.INFO,
+                    code="narrow_deep",
+                    message=f"Channel is narrow and deep (aspect {aspect:.2f})",
+                    suggestion="Wider channels often more efficient hydraulically"
+                ))
+            elif aspect > 5:
+                results.append(ValidationResult(
+                    level=ValidationLevel.INFO,
+                    code="wide_shallow",
+                    message=f"Channel is wide and shallow (aspect {aspect:.2f})",
+                    suggestion="May have higher friction losses"
+                ))
+
+        # Check freeboard ratio
+        if params.height > 0:
+            fb_ratio = params.freeboard / params.height
+            if fb_ratio > 0.5:
+                results.append(ValidationResult(
+                    level=ValidationLevel.INFO,
+                    code="high_freeboard",
+                    message=f"Freeboard is {fb_ratio*100:.0f}% of height",
+                    suggestion="Typical freeboard is 15-30% of design depth"
+                ))
+
+        return results
+
+    @classmethod
+    def _validate_mesh_settings(cls, params: "ChannelParams") -> List[ValidationResult]:
+        """Validate mesh quality settings."""
+        results = []
+
+        # Check resolution vs channel size
+        min_dimension = min(params.bottom_width, params.height) if params.height > 0 else params.bottom_width
+
+        if params.resolution_m > min_dimension:
+            results.append(ValidationResult(
+                level=ValidationLevel.WARNING,
+                code="coarse_resolution",
+                message=f"Resolution ({params.resolution_m}m) > smallest dimension ({min_dimension:.2f}m)",
+                field="resolution_m",
+                suggestion=f"Resolution should be <= {min_dimension:.2f}m"
+            ))
+
+        # Check profile vs axis resolution mismatch
+        if hasattr(params, 'profile_resolution') and hasattr(params, 'subdivide_profile'):
+            if params.subdivide_profile:
+                ratio = params.resolution_m / params.profile_resolution
+                if ratio > 3 or ratio < 0.33:
+                    results.append(ValidationResult(
+                        level=ValidationLevel.INFO,
+                        code="resolution_mismatch",
+                        message="Axis and profile resolutions differ significantly",
+                        suggestion="Match resolutions for uniform quad faces"
+                    ))
+
+        return results
+
+    @classmethod
+    def is_valid(cls, params: "ChannelParams") -> bool:
+        """Quick check if parameters have no errors."""
+        results = cls.validate(params)
+        return not any(r.is_error for r in results)
+
+    @classmethod
+    def get_errors(cls, params: "ChannelParams") -> List[str]:
+        """Get list of error messages only."""
+        results = cls.validate(params)
+        return [r.message for r in results if r.is_error]
+
+    @classmethod
+    def get_warnings(cls, params: "ChannelParams") -> List[str]:
+        """Get list of warning messages only."""
+        results = cls.validate(params)
+        return [r.message for r in results if r.is_warning]
 
 
 # Commercial pipe data (HDPE PE100 SDR series)
@@ -164,6 +459,32 @@ class ChannelParams:
         if wp > 0:
             return self.hydraulic_area(water_depth) / wp
         return 0.0
+
+    def validate(self) -> List[ValidationResult]:
+        """
+        Validate this parameter set.
+
+        Returns:
+            List of ValidationResult objects (empty if valid)
+        """
+        return ParameterValidator.validate(self)
+
+    def is_valid(self) -> bool:
+        """Quick check if parameters have no errors."""
+        return ParameterValidator.is_valid(self)
+
+    def get_validation_summary(self) -> Tuple[int, int, int]:
+        """
+        Get counts of validation issues.
+
+        Returns:
+            Tuple of (error_count, warning_count, info_count)
+        """
+        results = self.validate()
+        errors = sum(1 for r in results if r.level == ValidationLevel.ERROR)
+        warnings = sum(1 for r in results if r.level == ValidationLevel.WARNING)
+        infos = sum(1 for r in results if r.level == ValidationLevel.INFO)
+        return errors, warnings, infos
 
 
 @dataclass

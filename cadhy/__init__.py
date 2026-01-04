@@ -5,10 +5,12 @@ Toolkit for parametric modeling of hydraulic infrastructure within Blender.
 
 import sys
 
+# bl_info for legacy Blender (<4.2) compatibility
+# For Blender 4.2+, version info comes from blender_manifest.toml
 bl_info = {
     "name": "CADHY",
     "author": "CADHY Team",
-    "version": (0, 4, 1),
+    "version": (0, 4, 2),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar > CADHY",
     "description": "Parametric modeling toolkit for hydraulic infrastructure and CFD domain generation",
@@ -52,12 +54,12 @@ def _cadhy_excepthook(exc_type, exc_value, exc_traceback):
 def _validate_blender_version():
     """Validate that Blender version meets minimum requirements."""
     import bpy
+    from .core.util.versioning import MIN_BLENDER_VERSION
 
-    min_version = bl_info["blender"]
     current_version = bpy.app.version
 
-    if current_version < min_version:
-        min_str = ".".join(str(v) for v in min_version)
+    if current_version < MIN_BLENDER_VERSION:
+        min_str = ".".join(str(v) for v in MIN_BLENDER_VERSION)
         current_str = bpy.app.version_string
         raise RuntimeError(
             f"CADHY requires Blender {min_str} or newer. "
@@ -70,9 +72,10 @@ def _setup_logging():
     """Initialize logging system."""
     try:
         from .core.util.logging import log_info, setup_logging
+        from .core.util.versioning import CADHY_VERSION_STRING
 
         setup_logging()
-        log_info(f"CADHY v{'.'.join(str(v) for v in bl_info['version'])} initializing...")
+        log_info(f"CADHY v{CADHY_VERSION_STRING} initializing...")
     except Exception as e:
         print(f"[CADHY] Warning: Could not initialize logging: {e}")
 

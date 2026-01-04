@@ -7,8 +7,8 @@ import sys
 from typing import Optional, Tuple
 
 # CADHY Version - Single source of truth
-# This should match bl_info["version"] in __init__.py and pyproject.toml
-CADHY_VERSION = (0, 4, 0)
+# This should match blender_manifest.toml and pyproject.toml
+CADHY_VERSION = (0, 4, 2)
 CADHY_VERSION_STRING = ".".join(str(v) for v in CADHY_VERSION)
 
 # Minimum supported Blender version

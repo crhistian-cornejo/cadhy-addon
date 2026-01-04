@@ -11,7 +11,7 @@ id = "cadhy"
 name = "CADHY"
 
 # Version following semantic versioning
-version = "0.4.1"
+version = "0.4.2"
 
 # Short description (max 64 characters)
 tagline = "Parametric hydraulic channel design and CFD domain generation"
@@ -62,9 +62,9 @@ category = "3D View"
 # Tags for search
 tags = ["Modeling", "Engineering", "CFD", "Hydraulics", "CAD"]
 
-# Platforms this extension supports (leave empty for all)
+# Platforms this extension supports (omit for all platforms)
 # Possible values: windows-x64, macos-arm64, macos-x64, linux-x64
-platforms = []
+# platforms = ["windows-x64", "macos-arm64", "macos-x64", "linux-x64"]
 
 # Python dependencies (pip packages)
 # wheels = ["./wheels/numpy-1.26.0-*.whl"]

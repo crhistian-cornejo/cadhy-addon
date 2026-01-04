@@ -1,6 +1,7 @@
 """
 Unified CADHY Panel
 Single consolidated panel with collapsible sections.
+Supports Simple/Advanced UI modes for different user expertise levels.
 """
 
 import bpy
@@ -8,6 +9,80 @@ from bpy.types import Panel
 
 from ..operators.op_presets import draw_presets_menu
 from .pt_mesh_quality import get_quality_cache
+
+# =============================================================================
+# VALIDATION HELPER
+# =============================================================================
+
+
+def get_validation_status(settings):
+    """
+    Get validation status from current scene settings.
+
+    Returns:
+        Tuple of (errors, warnings, infos) counts and messages
+    """
+    from ...core.model.channel_params import ChannelParams, ParameterValidator, SectionType
+
+    # Map enum to SectionType
+    section_map = {
+        "TRAP": SectionType.TRAPEZOIDAL,
+        "RECT": SectionType.RECTANGULAR,
+        "TRI": SectionType.TRIANGULAR,
+        "CIRC": SectionType.CIRCULAR,
+        "PIPE": SectionType.PIPE,
+    }
+
+    try:
+        params = ChannelParams(
+            section_type=section_map.get(settings.section_type, SectionType.TRAPEZOIDAL),
+            bottom_width=settings.bottom_width,
+            side_slope=settings.side_slope,
+            height=settings.height,
+            freeboard=settings.freeboard,
+            lining_thickness=settings.lining_thickness,
+            resolution_m=settings.resolution_m,
+            subdivide_profile=settings.subdivide_profile,
+            profile_resolution=settings.profile_resolution,
+        )
+        results = ParameterValidator.validate(params)
+        errors = [r for r in results if r.level.value == "error"]
+        warnings = [r for r in results if r.level.value == "warning"]
+        infos = [r for r in results if r.level.value == "info"]
+        return errors, warnings, infos
+    except Exception:
+        return [], [], []
+
+
+def draw_validation_status(layout, settings):
+    """Draw validation status indicators."""
+    if not getattr(settings, "show_validation", True):
+        return
+
+    errors, warnings, infos = get_validation_status(settings)
+
+    if not errors and not warnings:
+        # All good - show subtle checkmark
+        row = layout.row()
+        row.label(text="Parameters OK", icon="CHECKMARK")
+        return
+
+    # Show issues
+    if errors:
+        box = layout.box()
+        box.alert = True
+        for err in errors[:3]:  # Max 3 errors
+            row = box.row()
+            row.label(text=err.message[:50], icon="ERROR")
+            if err.suggestion:
+                row = box.row()
+                row.scale_y = 0.7
+                row.label(text=f"  → {err.suggestion[:45]}")
+
+    if warnings:
+        for warn in warnings[:2]:  # Max 2 warnings
+            row = layout.row()
+            row.label(text=warn.message[:50], icon="INFO")
 
 
 def is_editing_channel(context):
@@ -49,35 +124,56 @@ class CADHY_PT_Unified(Panel):
         # Check if we're editing an existing channel
         is_editing, ch = is_editing_channel(context)
 
+        # Get UI mode
+        is_simple = getattr(settings, "ui_mode", "SIMPLE") == "SIMPLE"
+
+        # ═══════════════════════════════════════════════════════════════════
+        # HEADER: UI MODE TOGGLE
+        # ═══════════════════════════════════════════════════════════════════
+        header = layout.row()
+        header.prop(settings, "ui_mode", expand=True)
+
+        layout.separator()
+
         # ═══════════════════════════════════════════════════════════════════
         # SECTION: AXIS & BUILD
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_axis_section(context, layout, settings, is_editing, ch)
+        self.draw_axis_section(context, layout, settings, is_editing, ch, is_simple)
 
         # ═══════════════════════════════════════════════════════════════════
         # SECTION: SECTION PARAMETERS
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_section_params_section(context, layout, settings, is_editing, ch)
+        self.draw_section_params_section(context, layout, settings, is_editing, ch, is_simple)
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION: TRANSITIONS
+        # SECTION: VALIDATION STATUS (always visible in advanced mode)
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_transitions_section(context, layout, settings)
+        if not is_simple:
+            draw_validation_status(layout, settings)
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION: DROP STRUCTURES
+        # SECTION: TRANSITIONS (Advanced mode only)
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_drops_section(context, layout, settings)
+        if not is_simple:
+            self.draw_transitions_section(context, layout, settings)
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION: CFD DOMAIN
+        # SECTION: DROP STRUCTURES (Advanced mode only)
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_cfd_section(context, layout, settings, obj)
+        if not is_simple:
+            self.draw_drops_section(context, layout, settings)
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION: MESH QUALITY
+        # SECTION: CFD DOMAIN (Advanced mode only)
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_mesh_quality_section(context, layout, settings, obj)
+        if not is_simple:
+            self.draw_cfd_section(context, layout, settings, obj)
+
+        # ═══════════════════════════════════════════════════════════════════
+        # SECTION: MESH QUALITY (Advanced mode only)
+        # ═══════════════════════════════════════════════════════════════════
+        if not is_simple:
+            self.draw_mesh_quality_section(context, layout, settings, obj)
 
         # ═══════════════════════════════════════════════════════════════════
         # SECTION: CHANNEL INFO (only when channel selected)
@@ -86,24 +182,26 @@ class CADHY_PT_Unified(Panel):
             self.draw_channel_info_section(context, layout, settings, obj)
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION: CROSS-SECTIONS
+        # SECTION: CROSS-SECTIONS (Advanced mode only)
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_sections_section(context, layout, settings)
+        if not is_simple:
+            self.draw_sections_section(context, layout, settings)
 
         # ═══════════════════════════════════════════════════════════════════
         # SECTION: EXPORT
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_export_section(context, layout, settings, obj)
+        self.draw_export_section(context, layout, settings, obj, is_simple)
 
         # ═══════════════════════════════════════════════════════════════════
-        # SECTION: RENDER
+        # SECTION: RENDER (Advanced mode only)
         # ═══════════════════════════════════════════════════════════════════
-        self.draw_render_section(context, layout, settings)
+        if not is_simple:
+            self.draw_render_section(context, layout, settings)
 
     # ═══════════════════════════════════════════════════════════════════════
     # AXIS & BUILD SECTION
     # ═══════════════════════════════════════════════════════════════════════
-    def draw_axis_section(self, context, layout, settings, is_editing, ch):
+    def draw_axis_section(self, context, layout, settings, is_editing, ch, is_simple=False):
         """Draw axis selection and build section."""
         box = layout.box()
 
@@ -180,7 +278,7 @@ class CADHY_PT_Unified(Panel):
     # ═══════════════════════════════════════════════════════════════════════
     # SECTION PARAMETERS
     # ═══════════════════════════════════════════════════════════════════════
-    def draw_section_params_section(self, context, layout, settings, is_editing, ch):
+    def draw_section_params_section(self, context, layout, settings, is_editing, ch, is_simple=False):
         """Draw section parameters."""
         box = layout.box()
 
@@ -203,6 +301,51 @@ class CADHY_PT_Unified(Panel):
         section_type = ch.section_type if is_editing else settings.section_type
 
         col = box.column(align=True)
+
+        # ─────────────────────────────────────────────────────────────────
+        # SIMPLE MODE: Minimal UI with quick presets
+        # ─────────────────────────────────────────────────────────────────
+        if is_simple:
+            # Section type icons for visual selection
+            col.label(text="Channel Type:")
+            grid = col.grid_flow(columns=3, align=True)
+
+            section_icons = {
+                "TRAP": ("Trapez.", "IPO_EASE_IN_OUT"),
+                "RECT": ("Rect.", "MESH_PLANE"),
+                "PIPE": ("Pipe", "MESH_CIRCLE"),
+            }
+            for sec_type, (label, icon) in section_icons.items():
+                op = grid.operator(
+                    "cadhy.set_section_type",
+                    text=label,
+                    icon=icon,
+                    depress=(section_type == sec_type),
+                )
+                op.section_type = sec_type
+
+            col.separator()
+
+            # Quick size selector
+            col.label(text="Quick Size:")
+            col.prop(settings, "quick_size", text="")
+
+            # Show resulting dimensions (read-only info)
+            if settings.quick_size != "CUSTOM":
+                info_box = col.box()
+                info_box.scale_y = 0.8
+                info_box.label(text=f"Width: {settings.bottom_width:.1f}m")
+                info_box.label(text=f"Height: {settings.height:.1f}m")
+            else:
+                # Custom mode - show editable fields
+                col.prop(source, "bottom_width", text="Width")
+                col.prop(source, "height", text="Height")
+
+            return  # Simple mode ends here
+
+        # ─────────────────────────────────────────────────────────────────
+        # ADVANCED MODE: Full parameter control
+        # ─────────────────────────────────────────────────────────────────
 
         # Section type
         col.prop(source, "section_type", text="Type")
@@ -638,7 +781,7 @@ class CADHY_PT_Unified(Panel):
     # ═══════════════════════════════════════════════════════════════════════
     # EXPORT SECTION
     # ═══════════════════════════════════════════════════════════════════════
-    def draw_export_section(self, context, layout, settings, obj):
+    def draw_export_section(self, context, layout, settings, obj, is_simple=False):
         """Draw export section."""
         box = layout.box()
 
@@ -658,6 +801,15 @@ class CADHY_PT_Unified(Panel):
 
         col = box.column()
 
+        # Simple mode: Just one-click export
+        if is_simple:
+            row = col.row()
+            row.scale_y = 1.5
+            row.operator("cadhy.export_all", text="Export Project", icon="PACKAGE")
+            col.label(text="Exports mesh + reports", icon="INFO")
+            return
+
+        # Advanced mode: Full options
         # Export path
         col.prop(settings, "export_path", text="")
 

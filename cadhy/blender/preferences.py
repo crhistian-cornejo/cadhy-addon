@@ -49,13 +49,13 @@ class CADHYPreferences(AddonPreferences):
     developer_mode: BoolProperty(
         name="Developer Mode",
         description="Enable developer features (reload scripts, debug info)",
-        default=False,
+        default=True,  # Enabled for development
     )
 
     show_debug_info: BoolProperty(
         name="Show Debug Info",
         description="Display additional debug information in panels",
-        default=False,
+        default=True,  # Enabled for development
     )
 
     # CFD Solver integration (future)
@@ -169,11 +169,10 @@ class CADHYPreferences(AddonPreferences):
 
         # Version info
         layout.separator()
-        from .. import bl_info
+        from ..core.util.versioning import CADHY_VERSION_STRING
 
-        version_str = ".".join(str(v) for v in bl_info["version"])
         row = layout.row()
-        row.label(text=f"CADHY Version: {version_str}", icon="INFO")
+        row.label(text=f"CADHY Version: {CADHY_VERSION_STRING}", icon="INFO")
 
 
 class CADHY_OT_OpenLogFile(bpy.types.Operator):

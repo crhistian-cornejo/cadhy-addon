@@ -5,6 +5,77 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.4.2] - 2026-01-04
+
+### Added
+
+- **Simple/Advanced UI Mode**: Toggle between streamlined and full-featured interfaces
+  - Simple Mode: Essential parameters only with quick presets (XS, S, M, L, XL)
+  - Advanced Mode: Full access to transitions, CFD, and all parameters
+  - One-click section type buttons in Simple Mode
+  - Toggle via preferences or quick operator
+
+- **Parameter Validation System**: Engineering-aware validation for channel parameters
+  - Three validation levels: ERROR (blocks generation), WARNING (allows with caution), INFO (informational)
+  - Validates geometry constraints (width/height ratios, slopes)
+  - Validates hydraulic feasibility (Froude number, minimum dimensions)
+  - Validates CFD mesh settings (aspect ratios, resolution)
+  - Visual indicators in panel with expandable details
+
+- **Auto-Rebuild System**: Automatic channel updates when parameters change
+  - Debounced rebuilds (150ms) to avoid excessive updates
+  - Monitors curve axis modifications via depsgraph handlers
+  - Enable/disable via scene settings
+  - Timer-based scheduling for smooth performance
+
+- **Geometry Nodes Preview**: Non-destructive preview while editing
+  - Real-time cross-section preview on curves
+  - Updates without regenerating full mesh
+  - Trapezoidal profile calculation via node math
+  - Toggle preview visibility per curve
+
+- **Enhanced PDF Reports with Matplotlib**: Professional engineering documentation
+  - Cross-section diagrams with dimensions and annotations
+  - Longitudinal profile charts showing drops and transitions
+  - Hydraulic properties graphs (area, wetted perimeter along stations)
+  - Tables with hydraulic calculations
+  - Automatic figure generation and embedding
+
+- **Project Wizard**: Guided 4-step project creation workflow
+  - Step 1: Project information (name, description)
+  - Step 2: Axis curve creation (straight, curved, import)
+  - Step 3: Section parameters with live preview
+  - Step 4: Options (materials, markers, CFD domain)
+  - Navigation with Next/Previous/Finish buttons
+
+- **Batch Operations**: Automated multi-channel generation and export
+  - Batch Build: Generate multiple width/height variants
+  - Batch Export: Export all channels to multiple formats
+  - Progress feedback during batch operations
+  - Configurable variant parameters
+
+### Technical
+
+- New `cadhy/blender/handlers.py`: Event handler system for auto-rebuild
+- New `cadhy/core/geom/gn_preview.py`: Geometry Nodes preview infrastructure
+- New `cadhy/blender/operators/op_ui_helpers.py`: UI mode and preset operators
+- New `cadhy/blender/operators/op_project_wizard.py`: Wizard and batch operators
+- Enhanced `cadhy/core/model/channel_params.py`: ValidationLevel, ValidationResult, ParameterValidator
+- Enhanced `cadhy/core/io/export_pdf.py`: Matplotlib chart generation functions
+- Enhanced `cadhy/blender/properties/scene_props.py`: UI mode, quick_size, auto_rebuild properties
+- Enhanced `cadhy/blender/panels/pt_unified.py`: Dual-mode panel with validation display
+- Handler registration in `cadhy/registration.py`
+
+---
+
+## [0.4.1] - 2026-01-04
+
+### Fixed
+
+- Geometry bugs for TRIANGULAR sections, transitions, and drops
+
+---
+
 ## [0.4.0] - 2026-01-04
 
 ### Added

@@ -32,6 +32,14 @@ from .blender.operators.op_export_report import CADHY_OT_ExportReport
 from .blender.operators.op_generate_sections import CADHY_OT_GenerateSections
 from .blender.operators.op_help import CADHY_OT_OpenDocs, CADHY_OT_ShowHelp, CADHY_OT_ShowKeymap
 from .blender.operators.op_presets import CADHY_OT_DeletePreset, CADHY_OT_LoadPreset, CADHY_OT_SavePreset
+from .blender.operators.op_project_wizard import (
+    CADHY_OT_BatchBuild,
+    CADHY_OT_BatchExport,
+    CADHY_OT_ProjectWizard,
+    CADHY_OT_WizardFinish,
+    CADHY_OT_WizardNext,
+    CADHY_OT_WizardPrev,
+)
 from .blender.operators.op_setup_render import CADHY_OT_SetupRender
 from .blender.operators.op_setup_workspace import CADHY_OT_ResetWorkspace, CADHY_OT_SetupWorkspace
 from .blender.operators.op_station_markers import CADHY_OT_ClearStationMarkers, CADHY_OT_CreateStationMarkers
@@ -39,6 +47,11 @@ from .blender.operators.op_transitions import (
     CADHY_OT_AddTransition,
     CADHY_OT_ClearTransitions,
     CADHY_OT_RemoveTransition,
+)
+from .blender.operators.op_ui_helpers import (
+    CADHY_OT_ApplyQuickPreset,
+    CADHY_OT_SetSectionType,
+    CADHY_OT_ToggleUIMode,
 )
 from .blender.operators.op_update_cfd_domain import CADHY_OT_UpdateCFDDomain
 from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
@@ -119,6 +132,17 @@ classes = (
     CADHY_OT_DeletePreset,
     CADHY_OT_AnalyzeMeshQuality,
     CADHY_OT_SetMeshType,
+    # UI Helper operators
+    CADHY_OT_SetSectionType,
+    CADHY_OT_ToggleUIMode,
+    CADHY_OT_ApplyQuickPreset,
+    # Project Wizard and Batch operators
+    CADHY_OT_ProjectWizard,
+    CADHY_OT_WizardNext,
+    CADHY_OT_WizardPrev,
+    CADHY_OT_WizardFinish,
+    CADHY_OT_BatchBuild,
+    CADHY_OT_BatchExport,
     # Menus and quick operators
     CADHY_MT_CFDMeshSubmenu,
     CADHY_MT_ExportSubmenu,
@@ -248,10 +272,26 @@ def register():
     except Exception:
         pass
 
+    # Register event handlers (auto-rebuild, etc.)
+    try:
+        from .blender.handlers import register_handlers
+
+        register_handlers()
+    except Exception as e:
+        print(f"[CADHY] Warning: Could not register handlers: {e}")
+
 
 def unregister():
     """Unregister all classes and remove properties."""
-    # Unregister keyboard shortcuts first
+    # Unregister event handlers first
+    try:
+        from .blender.handlers import unregister_handlers
+
+        unregister_handlers()
+    except Exception:
+        pass
+
+    # Unregister keyboard shortcuts
     unregister_keymaps()
 
     # Unregister internationalization

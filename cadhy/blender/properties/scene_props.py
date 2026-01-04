@@ -141,21 +141,94 @@ class CADHYDropItem(PropertyGroup):
     )
 
 
+# =============================================================================
+# HELPER FUNCTIONS FOR PROPERTY UPDATES
+# =============================================================================
+
+
+def _apply_quick_size(self, context):
+    """Apply quick size preset to dimensions."""
+    sizes = {
+        "XS": (0.3, 0.3, 0.1, 1.0),   # width, height, freeboard, slope
+        "S": (0.5, 0.5, 0.15, 1.0),
+        "M": (1.0, 1.0, 0.2, 1.5),
+        "L": (2.0, 1.5, 0.3, 1.5),
+        "XL": (3.0, 2.0, 0.4, 1.5),
+    }
+    if self.quick_size in sizes:
+        w, h, fb, slope = sizes[self.quick_size]
+        self.bottom_width = w
+        self.height = h
+        self.freeboard = fb
+        self.side_slope = slope
+
+
 class CADHYSceneSettings(PropertyGroup):
     """Global CADHY settings stored at scene level."""
 
-    # Unit settings
+    # ==========================================================================
+    # UI MODE SETTINGS
+    # ==========================================================================
+
+    ui_mode: EnumProperty(
+        name="UI Mode",
+        description="Interface complexity level",
+        items=[
+            ("SIMPLE", "Simple", "Essential parameters only - ideal for quick designs"),
+            ("ADVANCED", "Advanced", "All parameters visible - full control"),
+        ],
+        default="SIMPLE",
+    )
+
+    auto_rebuild: BoolProperty(
+        name="Auto Rebuild",
+        description="Automatically rebuild channel when parameters change (experimental)",
+        default=False,
+    )
+
+    show_validation: BoolProperty(
+        name="Show Validation",
+        description="Display parameter validation warnings and suggestions",
+        default=True,
+    )
+
+    # ==========================================================================
+    # QUICK SIZE PRESETS (for Simple mode)
+    # ==========================================================================
+
+    quick_size: EnumProperty(
+        name="Size",
+        description="Quick size preset - adjusts width and height proportionally",
+        items=[
+            ("XS", "XS (0.3m)", "Extra small: 0.3m width, 0.3m height"),
+            ("S", "S (0.5m)", "Small: 0.5m width, 0.5m height"),
+            ("M", "M (1.0m)", "Medium: 1.0m width, 1.0m height"),
+            ("L", "L (2.0m)", "Large: 2.0m width, 1.5m height"),
+            ("XL", "XL (3.0m)", "Extra large: 3.0m width, 2.0m height"),
+            ("CUSTOM", "Custom", "Set dimensions manually"),
+        ],
+        default="L",
+        update=lambda self, ctx: _apply_quick_size(self, ctx),
+    )
+
+    # ==========================================================================
+    # UNIT SETTINGS
+    # ==========================================================================
+
     units: EnumProperty(
         name="Units",
-        description="Working units for CADHY",
+        description="Working units for CADHY. Affects display and input of dimensional values",
         items=[
-            ("METERS", "Meters", "Use meters"),
-            ("FEET", "Feet", "Use feet"),
+            ("METERS", "Meters (m)", "SI metric units - recommended for hydraulic design"),
+            ("FEET", "Feet (ft)", "Imperial units - converts internally to meters"),
         ],
         default="METERS",
     )
 
-    # Default resolution
+    # ==========================================================================
+    # DEFAULT SETTINGS
+    # ==========================================================================
+
     default_resolution_m: FloatProperty(
         name="Default Resolution",
         description="Default sampling resolution along axis (meters)",

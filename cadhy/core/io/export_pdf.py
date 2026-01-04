@@ -1,11 +1,13 @@
 """
 Export PDF Report Module
-Generate PDF reports for CADHY pre-design documentation.
-Uses basic Python approach without external dependencies.
+Generate professional PDF reports for CADHY pre-design documentation.
+Includes cross-section diagrams and longitudinal profiles using matplotlib.
 """
 
+import os
+import tempfile
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Try to import reportlab (optional dependency)
 try:
@@ -14,6 +16,7 @@ try:
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
     from reportlab.platypus import (
+        Image,
         Paragraph,
         SimpleDocTemplate,
         Spacer,
@@ -24,6 +27,275 @@ try:
     HAS_REPORTLAB = True
 except ImportError:
     HAS_REPORTLAB = False
+
+# Try to import matplotlib (optional dependency)
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend
+    import matplotlib.pyplot as plt
+    import numpy as np
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+
+# =============================================================================
+# CHART GENERATION WITH MATPLOTLIB
+# =============================================================================
+
+
+def generate_cross_section_figure(
+    section_type: str,
+    bottom_width: float,
+    height: float,
+    side_slope: float = 1.5,
+    freeboard: float = 0.3,
+    lining_thickness: float = 0.1,
+    water_depth: float = None,
+) -> Optional[str]:
+    """
+    Generate a cross-section diagram with dimensions.
+
+    Args:
+        section_type: TRAP, RECT, TRI, CIRC, PIPE
+        bottom_width: Bottom width in meters
+        height: Design height in meters
+        side_slope: Side slope (H:V)
+        freeboard: Freeboard in meters
+        lining_thickness: Lining thickness in meters
+        water_depth: Optional water depth to show
+
+    Returns:
+        Path to temporary image file, or None if failed
+    """
+    if not HAS_MATPLOTLIB:
+        return None
+
+    try:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+
+        total_height = height + freeboard
+
+        if section_type == "TRAP":
+            # Trapezoidal section
+            top_width = bottom_width + 2 * side_slope * total_height
+
+            # Outer profile
+            outer_x = [
+                -top_width/2, -bottom_width/2, bottom_width/2, top_width/2
+            ]
+            outer_y = [total_height, 0, 0, total_height]
+
+            ax.plot(outer_x + [outer_x[0]], outer_y + [outer_y[0]], 'b-', linewidth=2, label='Channel')
+
+            # Lining (if present)
+            if lining_thickness > 0:
+                inner_bw = bottom_width - 2 * lining_thickness
+                inner_tw = top_width - 2 * lining_thickness
+                inner_x = [-inner_tw/2, -inner_bw/2, inner_bw/2, inner_tw/2]
+                inner_y = [total_height - lining_thickness, lining_thickness, lining_thickness, total_height - lining_thickness]
+                ax.fill(inner_x, inner_y, color='lightgray', alpha=0.5)
+
+            # Water level line
+            if water_depth and water_depth > 0:
+                wl_width = bottom_width + 2 * side_slope * water_depth
+                ax.fill(
+                    [-wl_width/2, -bottom_width/2, bottom_width/2, wl_width/2],
+                    [water_depth, 0, 0, water_depth],
+                    color='lightblue', alpha=0.5, label='Water'
+                )
+                ax.axhline(y=water_depth, color='blue', linestyle='--', alpha=0.7)
+
+            # Freeboard line
+            ax.axhline(y=height, color='green', linestyle=':', alpha=0.7, label='Design Level')
+
+            # Dimension annotations
+            ax.annotate('', xy=(bottom_width/2, -0.15), xytext=(-bottom_width/2, -0.15),
+                       arrowprops=dict(arrowstyle='<->', color='red'))
+            ax.text(0, -0.3, f'b = {bottom_width:.2f} m', ha='center', fontsize=9, color='red')
+
+            ax.annotate('', xy=(top_width/2 + 0.15, total_height), xytext=(top_width/2 + 0.15, 0),
+                       arrowprops=dict(arrowstyle='<->', color='red'))
+            ax.text(top_width/2 + 0.4, total_height/2, f'H = {total_height:.2f} m', ha='left', fontsize=9, color='red', rotation=90, va='center')
+
+            # Slope annotation
+            ax.text(top_width/4, total_height * 0.7, f'z = {side_slope:.1f}:1', fontsize=9, color='blue')
+
+        elif section_type == "RECT":
+            # Rectangular section
+            outer_x = [-bottom_width/2, -bottom_width/2, bottom_width/2, bottom_width/2]
+            outer_y = [0, total_height, total_height, 0]
+
+            ax.plot(outer_x + [outer_x[0]], outer_y + [outer_y[0]], 'b-', linewidth=2)
+
+            # Dimension annotations
+            ax.annotate('', xy=(bottom_width/2, -0.15), xytext=(-bottom_width/2, -0.15),
+                       arrowprops=dict(arrowstyle='<->', color='red'))
+            ax.text(0, -0.3, f'b = {bottom_width:.2f} m', ha='center', fontsize=9, color='red')
+
+            ax.annotate('', xy=(bottom_width/2 + 0.15, total_height), xytext=(bottom_width/2 + 0.15, 0),
+                       arrowprops=dict(arrowstyle='<->', color='red'))
+            ax.text(bottom_width/2 + 0.3, total_height/2, f'H = {total_height:.2f} m', ha='left', fontsize=9, color='red', rotation=90, va='center')
+
+        elif section_type in ("CIRC", "PIPE"):
+            # Circular section
+            diameter = bottom_width
+            theta = np.linspace(0, 2*np.pi, 100)
+            x = (diameter/2) * np.cos(theta)
+            y = (diameter/2) * np.sin(theta) + diameter/2
+
+            ax.plot(x, y, 'b-', linewidth=2)
+
+            # Diameter annotation
+            ax.annotate('', xy=(diameter/2, diameter/2), xytext=(-diameter/2, diameter/2),
+                       arrowprops=dict(arrowstyle='<->', color='red'))
+            ax.text(0, diameter/2 - 0.2, f'D = {diameter:.2f} m', ha='center', fontsize=9, color='red')
+
+        elif section_type == "TRI":
+            # Triangular V-channel
+            top_width = 2 * side_slope * total_height
+
+            outer_x = [-top_width/2, 0, top_width/2]
+            outer_y = [total_height, 0, total_height]
+
+            ax.plot(outer_x + [outer_x[0]], outer_y + [outer_y[0]], 'b-', linewidth=2)
+
+            # Slope annotation
+            ax.text(top_width/4, total_height * 0.7, f'z = {side_slope:.1f}:1', fontsize=9, color='blue')
+
+        ax.set_aspect('equal')
+        ax.set_xlabel('Width (m)')
+        ax.set_ylabel('Height (m)')
+        ax.set_title(f'{section_type} Cross-Section', fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc='upper right', fontsize=8)
+
+        # Set axis limits with padding
+        ax.autoscale()
+        ax.margins(0.15)
+
+        # Save to temp file
+        temp_path = os.path.join(tempfile.gettempdir(), 'cadhy_section.png')
+        plt.savefig(temp_path, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig)
+
+        return temp_path
+
+    except Exception as e:
+        print(f"[CADHY] Cross-section figure generation failed: {e}")
+        if 'fig' in locals():
+            plt.close(fig)
+        return None
+
+
+def generate_longitudinal_profile(
+    stations: List[float],
+    elevations: List[float],
+    drops: List[Tuple[float, float]] = None,
+    transitions: List[Tuple[float, float, str]] = None,
+) -> Optional[str]:
+    """
+    Generate a longitudinal profile diagram.
+
+    Args:
+        stations: List of station values (m)
+        elevations: List of invert elevations (m)
+        drops: List of (station, drop_height) tuples
+        transitions: List of (start_station, end_station, description) tuples
+
+    Returns:
+        Path to temporary image file, or None if failed
+    """
+    if not HAS_MATPLOTLIB:
+        return None
+
+    try:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 4))
+
+        # Plot invert profile
+        ax.plot(stations, elevations, 'b-', linewidth=2, label='Invert', marker='o', markersize=3)
+
+        # Mark drops
+        if drops:
+            for station, drop_height in drops:
+                ax.axvline(x=station, color='red', linestyle='--', alpha=0.7)
+                ax.annotate(f'Drop\n{drop_height:.1f}m',
+                           xy=(station, min(elevations)),
+                           xytext=(station + 5, min(elevations) + 0.5),
+                           fontsize=8, color='red')
+
+        # Mark transitions
+        if transitions:
+            for start, end, desc in transitions:
+                ax.axvspan(start, end, alpha=0.2, color='yellow')
+                mid = (start + end) / 2
+                ax.text(mid, max(elevations), desc, ha='center', fontsize=7, rotation=90, va='bottom')
+
+        ax.set_xlabel('Station (m)')
+        ax.set_ylabel('Elevation (m)')
+        ax.set_title('Longitudinal Profile', fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc='upper right', fontsize=8)
+
+        # Save to temp file
+        temp_path = os.path.join(tempfile.gettempdir(), 'cadhy_profile.png')
+        plt.savefig(temp_path, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig)
+
+        return temp_path
+
+    except Exception as e:
+        print(f"[CADHY] Longitudinal profile generation failed: {e}")
+        if 'fig' in locals():
+            plt.close(fig)
+        return None
+
+
+def generate_hydraulic_chart(
+    stations: List[float],
+    areas: List[float],
+    wetted_perimeters: List[float],
+) -> Optional[str]:
+    """
+    Generate hydraulic properties chart (area and wetted perimeter vs station).
+
+    Returns:
+        Path to temporary image file, or None if failed
+    """
+    if not HAS_MATPLOTLIB:
+        return None
+
+    try:
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+
+        # Hydraulic area
+        ax1.plot(stations, areas, 'b-', linewidth=2, marker='o', markersize=3)
+        ax1.set_ylabel('Hydraulic Area (m²)')
+        ax1.set_title('Hydraulic Properties Along Channel', fontsize=12, fontweight='bold')
+        ax1.grid(True, alpha=0.3)
+        ax1.fill_between(stations, areas, alpha=0.3)
+
+        # Wetted perimeter
+        ax2.plot(stations, wetted_perimeters, 'g-', linewidth=2, marker='s', markersize=3)
+        ax2.set_xlabel('Station (m)')
+        ax2.set_ylabel('Wetted Perimeter (m)')
+        ax2.grid(True, alpha=0.3)
+        ax2.fill_between(stations, wetted_perimeters, alpha=0.3, color='green')
+
+        plt.tight_layout()
+
+        # Save to temp file
+        temp_path = os.path.join(tempfile.gettempdir(), 'cadhy_hydraulics.png')
+        plt.savefig(temp_path, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig)
+
+        return temp_path
+
+    except Exception as e:
+        print(f"[CADHY] Hydraulic chart generation failed: {e}")
+        if 'fig' in locals():
+            plt.close(fig)
+        return None
 
 
 def is_pdf_available() -> bool:
@@ -160,6 +432,22 @@ def generate_pdf_report(
 
         story.append(Spacer(1, 0.5 * cm))
 
+        # Cross-section diagram (if matplotlib available)
+        if HAS_MATPLOTLIB:
+            section_fig = generate_cross_section_figure(
+                section_type=channel.get("section_type", "TRAP"),
+                bottom_width=channel.get("bottom_width_m", 2.0),
+                height=channel.get("height_m", 1.5),
+                side_slope=channel.get("side_slope", 1.5),
+                freeboard=channel.get("freeboard_m", 0.3),
+                lining_thickness=channel.get("lining_thickness_m", 0.1),
+            )
+            if section_fig:
+                story.append(Paragraph("<b>Cross-Section Diagram:</b>", normal_style))
+                story.append(Spacer(1, 0.2 * cm))
+                story.append(Image(section_fig, width=14 * cm, height=8.75 * cm))
+                story.append(Spacer(1, 0.5 * cm))
+
         # CFD Domain (if available)
         if "cfd_domain" in report_data:
             story.append(Paragraph("3. CFD Domain", heading_style))
@@ -259,6 +547,19 @@ def generate_pdf_report(
                     )
                 )
                 story.append(sect_table)
+
+                # Hydraulic chart (if matplotlib available)
+                if HAS_MATPLOTLIB and len(stations) > 1:
+                    hydraulic_fig = generate_hydraulic_chart(
+                        stations=stations,
+                        areas=areas,
+                        wetted_perimeters=perimeters,
+                    )
+                    if hydraulic_fig:
+                        story.append(Spacer(1, 0.5 * cm))
+                        story.append(Paragraph("<b>Hydraulic Properties Chart:</b>", normal_style))
+                        story.append(Spacer(1, 0.2 * cm))
+                        story.append(Image(hydraulic_fig, width=15 * cm, height=9 * cm))
 
         # Footer
         story.append(Spacer(1, 2 * cm))
