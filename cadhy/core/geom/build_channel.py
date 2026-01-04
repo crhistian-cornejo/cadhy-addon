@@ -760,7 +760,9 @@ def _get_profile_edge_ranges(params: ChannelParams, num_verts: int) -> dict:
     return {"circular": True, "count": num_verts}
 
 
-def build_channel_mesh(curve_obj, params: ChannelParams, alignment=None) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
+def build_channel_mesh(
+    curve_obj, params: ChannelParams, alignment=None, drops=None
+) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
     """
     Build channel mesh geometry from curve and parameters.
 
@@ -768,10 +770,14 @@ def build_channel_mesh(curve_obj, params: ChannelParams, alignment=None) -> Tupl
         curve_obj: Blender curve object (axis)
         params: Channel parameters (base parameters)
         alignment: Optional ChannelAlignment for transitions
+        drops: Optional list of DropStructure for vertical drops
 
     Returns:
         Tuple of (vertices, faces) for mesh creation
     """
+    # If we have drops, use segmented building
+    if drops and len(drops) > 0:
+        return _build_channel_with_drops(curve_obj, params, alignment, drops)
 
     # Check if curve is cyclic (closed loop)
     is_cyclic = _is_curve_cyclic(curve_obj)
@@ -1197,6 +1203,229 @@ def _add_lining_end_caps(
                 base_end + bl_idx,  # Inner BL
             )
         )
+
+
+def _build_channel_with_drops(
+    curve_obj, params: ChannelParams, alignment, drops
+) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
+    """
+    Build channel mesh with drop structures inserted at specified stations.
+
+    This function splits the channel into segments at drop locations,
+    builds each segment separately, and adds drop geometry between them.
+    """
+    from .build_drop import generate_drop_geometry
+
+    # Get total curve length
+    total_length = get_curve_length(curve_obj)
+    if total_length <= 0:
+        return [], []
+
+    # Sort drops by station
+    sorted_drops = sorted(drops, key=lambda d: d.station)
+
+    # Filter drops within valid range
+    valid_drops = [d for d in sorted_drops if 0 < d.station < total_length]
+
+    if not valid_drops:
+        # No valid drops, build normally
+        return build_channel_mesh(curve_obj, params, alignment, drops=None)
+
+    # Build segments between drops
+    all_vertices = []
+    all_faces = []
+
+    # Segment boundaries: [0, drop1, drop2, ..., end]
+    segment_starts = [0.0] + [d.station for d in valid_drops]
+    segment_ends = [d.station for d in valid_drops] + [total_length]
+
+    # Track cumulative Z offset from drops
+    z_offset = 0.0
+    vertex_offset = 0
+
+    for seg_idx, (start, end) in enumerate(zip(segment_starts, segment_ends)):
+        # Sample curve for this segment
+        # We need to sample from start to end station
+        samples = _sample_segment(curve_obj, params.resolution_m, start, end, total_length)
+
+        if len(samples) < 2:
+            continue
+
+        # Apply Z offset from previous drops
+        for sample in samples:
+            sample["position"] = sample["position"] - Vector((0, 0, z_offset))
+
+        # Build segment mesh
+        segment_verts, segment_faces = _build_segment_mesh(samples, params, alignment)
+
+        # Offset face indices and add to collection
+        for face in segment_faces:
+            all_faces.append(tuple(v + vertex_offset for v in face))
+
+        all_vertices.extend(segment_verts)
+        vertex_offset += len(segment_verts)
+
+        # If there's a drop after this segment, add it
+        if seg_idx < len(valid_drops):
+            drop = valid_drops[seg_idx]
+
+            # Get position and orientation at drop station
+            t = drop.station / total_length
+            pos, tangent, normal = evaluate_curve_at_parameter(curve_obj, t)
+
+            # Apply current Z offset
+            pos = pos - Vector((0, 0, z_offset))
+
+            # Get params at this station
+            if alignment:
+                section_params = alignment.get_params_at_station(drop.station)
+            else:
+                section_params = params
+
+            # Generate drop geometry
+            drop_verts, drop_faces = generate_drop_geometry(drop, section_params, pos, tangent, normal)
+
+            # Offset and add drop geometry
+            for face in drop_faces:
+                all_faces.append(tuple(v + vertex_offset for v in face))
+
+            all_vertices.extend(drop_verts)
+            vertex_offset += len(drop_verts)
+
+            # Accumulate Z offset for next segment
+            z_offset += drop.drop_height
+
+    return all_vertices, all_faces
+
+
+def _sample_segment(
+    curve_obj, resolution_m: float, start_station: float, end_station: float, total_length: float
+) -> List[dict]:
+    """Sample curve points for a segment between two stations."""
+    # Calculate t values for start and end
+    t_start = start_station / total_length
+    t_end = end_station / total_length
+
+    # Number of samples for this segment
+    segment_length = end_station - start_station
+    num_samples = max(2, int(segment_length / resolution_m) + 1)
+
+    t_values = [t_start + (t_end - t_start) * i / (num_samples - 1) for i in range(num_samples)]
+
+    # Sample with RMF
+    return _sample_with_rmf(curve_obj, t_values, total_length)
+
+
+def _build_segment_mesh(
+    samples: List[dict], params: ChannelParams, alignment
+) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
+    """Build mesh for a channel segment from samples."""
+    vertices = []
+    faces = []
+
+    # Check for transitions
+    has_transitions = alignment is not None and len(alignment.transitions) > 0
+
+    # Generate base profile to get vertex count
+    inner_verts, outer_verts = generate_section_vertices_with_lining(params)
+    has_lining = len(outer_verts) > 0
+    num_inner_verts = len(inner_verts)
+    num_outer_verts = len(outer_verts) if has_lining else 0
+    total_verts_per_section = num_inner_verts + num_outer_verts
+
+    # Generate vertices for each sample
+    for sample in samples:
+        pos = sample["position"]
+        tangent = sample["tangent"]
+        normal = sample["normal"]
+        station = sample.get("station", 0.0)
+
+        binormal = tangent.cross(normal).normalized()
+
+        if has_transitions:
+            section_params = alignment.get_params_at_station(station)
+            inner_verts, outer_verts = generate_section_vertices_with_lining(section_params)
+
+        for sx, sy in inner_verts:
+            world_pos = pos + binormal * sx + normal * sy
+            vertices.append(world_pos)
+
+        if has_lining:
+            for sx, sy in outer_verts:
+                world_pos = pos + binormal * sx + normal * sy
+                vertices.append(world_pos)
+
+    # Generate faces
+    num_samples = len(samples)
+    is_open_channel = params.section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR, SectionType.TRIANGULAR)
+    edge_info = _get_profile_edge_ranges(params, num_inner_verts)
+
+    for i in range(num_samples - 1):
+        base_current = i * total_verts_per_section
+        base_next = (i + 1) * total_verts_per_section
+
+        if is_open_channel:
+            if params.section_type == SectionType.TRIANGULAR:
+                right_start, right_end = edge_info["right_slope"]
+                tl_idx = edge_info["top_left"]
+
+                for j in range(right_start, right_end):
+                    j_next = j + 1
+                    faces.append((base_current + j, base_current + j_next, base_next + j_next, base_next + j))
+
+                faces.append((base_current + tl_idx, base_current + 0, base_next + 0, base_next + tl_idx))
+            else:
+                bottom_start, bottom_end = edge_info["bottom"]
+                right_start, right_end = edge_info["right_wall"]
+                tl_idx = edge_info["top_left"]
+
+                for j in range(bottom_start, bottom_end):
+                    j_next = j + 1
+                    faces.append((base_current + j, base_current + j_next, base_next + j_next, base_next + j))
+
+                for j in range(right_start, right_end):
+                    j_next = j + 1
+                    faces.append((base_current + j, base_current + j_next, base_next + j_next, base_next + j))
+
+                faces.append((base_current + tl_idx, base_current + 0, base_next + 0, base_next + tl_idx))
+        else:
+            # Closed channels
+            is_full_circle = params.section_type == SectionType.PIPE
+            if is_full_circle:
+                for j in range(num_inner_verts):
+                    j_next = (j + 1) % num_inner_verts
+                    faces.append((base_current + j, base_current + j_next, base_next + j_next, base_next + j))
+            else:
+                for j in range(num_inner_verts - 1):
+                    j_next = j + 1
+                    faces.append((base_current + j, base_current + j_next, base_next + j_next, base_next + j))
+
+        if has_lining:
+            outer_offset = num_inner_verts
+            if params.section_type == SectionType.PIPE:
+                for j in range(num_outer_verts):
+                    j_next = (j + 1) % num_outer_verts
+                    faces.append(
+                        (
+                            base_current + outer_offset + j,
+                            base_next + outer_offset + j,
+                            base_next + outer_offset + j_next,
+                            base_current + outer_offset + j_next,
+                        )
+                    )
+            else:
+                for j in range(num_outer_verts - 1):
+                    j_next = j + 1
+                    faces.append(
+                        (
+                            base_current + outer_offset + j,
+                            base_next + outer_offset + j,
+                            base_next + outer_offset + j_next,
+                            base_current + outer_offset + j_next,
+                        )
+                    )
+
+    return vertices, faces
 
 
 def create_channel_object(

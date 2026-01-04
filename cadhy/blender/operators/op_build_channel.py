@@ -8,6 +8,7 @@ from bpy.types import Operator
 
 from ...core.geom.build_channel import build_channel_mesh, create_channel_object, get_curve_length
 from ...core.model.channel_params import ChannelParams, SectionType
+from ...core.model.drop_structures import DropStructure, DropType
 from ...core.model.transition_params import ChannelAlignment
 from ...core.util.logging import OperationLogger
 from ...core.util.naming import COLLECTION_CHANNELS, get_channel_name
@@ -94,9 +95,29 @@ class CADHY_OT_BuildChannel(Operator):
                                 target_side_slope=target_slope,
                             )
 
+                # Collect drop structures if enabled
+                drop_structures = []
+                if settings.drops_enabled and len(settings.drops) > 0:
+                    drop_type_map = {
+                        "VERTICAL": DropType.VERTICAL,
+                        "INCLINED": DropType.INCLINED,
+                        "STEPPED": DropType.STEPPED,
+                    }
+                    for drop_ui in settings.drops:
+                        drop = DropStructure(
+                            station=drop_ui.station,
+                            drop_height=drop_ui.drop_height,
+                            drop_type=drop_type_map.get(drop_ui.drop_type, DropType.VERTICAL),
+                            length=drop_ui.length,
+                            num_steps=drop_ui.num_steps,
+                        )
+                        drop_structures.append(drop)
+                    # Sort by station
+                    drop_structures.sort(key=lambda d: d.station)
+
                 # Build mesh geometry
                 wm.progress_update(30)
-                vertices, faces = build_channel_mesh(axis_obj, params, alignment=alignment)
+                vertices, faces = build_channel_mesh(axis_obj, params, alignment=alignment, drops=drop_structures)
 
                 if not vertices or not faces:
                     wm.progress_end()

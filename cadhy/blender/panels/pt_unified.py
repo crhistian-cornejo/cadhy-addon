@@ -65,6 +65,11 @@ class CADHY_PT_Unified(Panel):
         self.draw_transitions_section(context, layout, settings)
 
         # ═══════════════════════════════════════════════════════════════════
+        # SECTION: DROP STRUCTURES
+        # ═══════════════════════════════════════════════════════════════════
+        self.draw_drops_section(context, layout, settings)
+
+        # ═══════════════════════════════════════════════════════════════════
         # SECTION: CFD DOMAIN
         # ═══════════════════════════════════════════════════════════════════
         self.draw_cfd_section(context, layout, settings, obj)
@@ -309,6 +314,61 @@ class CADHY_PT_Unified(Panel):
         # Add transition button
         col.separator()
         col.operator("cadhy.add_transition", text="Add Transition", icon="ADD")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # DROP STRUCTURES SECTION
+    # ═══════════════════════════════════════════════════════════════════════
+    def draw_drops_section(self, context, layout, settings):
+        """Draw drop structures configuration."""
+        box = layout.box()
+
+        # Header with collapse toggle and enable checkbox
+        row = box.row()
+        row.prop(
+            settings,
+            "ui_show_drops",
+            icon="TRIA_DOWN" if settings.ui_show_drops else "TRIA_RIGHT",
+            icon_only=True,
+            emboss=False,
+        )
+        row.label(text="Drop Structures", icon="SORT_DESC")
+        row.prop(settings, "drops_enabled", text="")
+
+        if not settings.ui_show_drops:
+            return
+
+        col = box.column()
+        col.enabled = settings.drops_enabled
+
+        # Info about drops
+        if not settings.drops:
+            col.label(text="No drops defined", icon="INFO")
+            col.label(text="Add drops for vertical transitions")
+
+        # List of drops
+        for i, drop in enumerate(settings.drops):
+            drop_box = col.box()
+            header = drop_box.row()
+            header.label(text=f"Drop {i + 1}", icon="SORT_DESC")
+            header.operator("cadhy.remove_drop", text="", icon="X").index = i
+
+            # Station and height
+            row = drop_box.row(align=True)
+            row.prop(drop, "station", text="Station")
+            row.prop(drop, "drop_height", text="Height")
+
+            # Type selector
+            drop_box.prop(drop, "drop_type", text="Type")
+
+            # Type-specific parameters
+            if drop.drop_type in ("INCLINED", "STEPPED"):
+                drop_box.prop(drop, "length", text="Length")
+            if drop.drop_type == "STEPPED":
+                drop_box.prop(drop, "num_steps", text="Steps")
+
+        # Add drop button
+        col.separator()
+        col.operator("cadhy.add_drop", text="Add Drop", icon="ADD")
 
     # ═══════════════════════════════════════════════════════════════════════
     # CFD DOMAIN SECTION

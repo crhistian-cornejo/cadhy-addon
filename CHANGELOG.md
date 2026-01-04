@@ -5,6 +5,49 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.4.0] - 2026-01-04
+
+### Added
+
+- **Project Templates**: Complete ready-to-use channel projects
+  - Click a template to generate BezierCurve + parameters + transitions/drops
+  - Templates organized by category: Basic, With Transitions, With Drops, Complex
+  - New templates include:
+    - Width Transition (Expansion): 1.5m → 3.0m
+    - Width Transition (Contraction): 4.0m → 2.0m
+    - Section Change (Trap to Rect): Trapezoidal to Rectangular
+    - Multi-Transition Canal: Multiple width changes
+    - Canal with Drop: Single 1.5m vertical drop
+    - Canal with Multiple Drops: 2 stepped drops
+    - Drainage with Expansion: Urban drainage widening at outlet
+    - Complete Demo (All Features): Curves + transition + drop
+
+- **Excel Export**: Export channel data to Excel format
+  - Auto-installs openpyxl if not present
+  - Professional formatting with colors and borders
+  - Two sheets: Summary view and Data Table
+  - Opens automatically with default spreadsheet app (Excel, Numbers, LibreOffice)
+  - Falls back to CSV if Excel export fails
+
+- **Curve Generators**: BezierCurve generators for different channel scenarios
+  - Straight channels with slope
+  - S-curve meandering channels
+  - Urban drainage with multiple curves
+  - Steep mountain channels (8% slope)
+  - Channels with drop structures
+
+### Changed
+
+- **Presets renamed to Project Templates**: Better reflects functionality
+- **UI Reorganization**: Templates grouped by category for easier navigation
+- **Channel Info Panel**: Removed decorative icon for consistency
+
+### Fixed
+
+- Version synchronization across all files (bl_info, versioning.py, manifest, pyproject.toml)
+
+---
+
 ## [0.3.9] - 2026-01-03
 
 ### Added

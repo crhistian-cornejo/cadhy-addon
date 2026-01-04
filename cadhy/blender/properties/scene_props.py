@@ -87,6 +87,60 @@ class CADHYTransitionItem(PropertyGroup):
     )
 
 
+class CADHYDropItem(PropertyGroup):
+    """Single drop structure definition."""
+
+    station: FloatProperty(
+        name="Station",
+        description="Station position of drop (meters)",
+        default=0.0,
+        min=0.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    drop_height: FloatProperty(
+        name="Height",
+        description="Total drop height (meters)",
+        default=1.0,
+        min=0.1,
+        max=20.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    drop_type: EnumProperty(
+        name="Type",
+        description="Type of drop structure",
+        items=[
+            ("VERTICAL", "Vertical", "Vertical drop with wall"),
+            ("INCLINED", "Inclined", "Inclined ramp/chute"),
+            ("STEPPED", "Stepped", "Multiple steps"),
+        ],
+        default="VERTICAL",
+    )
+
+    # For inclined drops
+    length: FloatProperty(
+        name="Length",
+        description="Horizontal length of drop (for inclined/stepped)",
+        default=5.0,
+        min=0.1,
+        max=100.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    # For stepped drops
+    num_steps: IntProperty(
+        name="Steps",
+        description="Number of steps",
+        default=3,
+        min=1,
+        max=20,
+    )
+
+
 class CADHYSceneSettings(PropertyGroup):
     """Global CADHY settings stored at scene level."""
 
@@ -531,4 +585,30 @@ class CADHYSceneSettings(PropertyGroup):
         type=CADHYTransitionItem,
         name="Transitions",
         description="List of section transitions",
+    )
+
+    # Drop structures UI
+    ui_show_drops: BoolProperty(
+        name="Show Drops",
+        description="Expand drop structures section",
+        default=False,
+    )
+
+    drops_enabled: BoolProperty(
+        name="Enable Drops",
+        description="Enable drop structures along channel",
+        default=False,
+    )
+
+    active_drop_index: IntProperty(
+        name="Active Drop",
+        description="Index of active drop structure",
+        default=0,
+    )
+
+    # Drops collection
+    drops: CollectionProperty(
+        type=CADHYDropItem,
+        name="Drops",
+        description="List of drop structures",
     )

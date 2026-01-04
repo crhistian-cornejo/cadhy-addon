@@ -19,6 +19,11 @@ from .blender.operators.op_assign_materials import CADHY_OT_AssignMaterials
 from .blender.operators.op_build_cfd_domain import CADHY_OT_BuildCFDDomain
 from .blender.operators.op_build_channel import CADHY_OT_BuildChannel
 from .blender.operators.op_dev_reload import CADHY_OT_DevReload
+from .blender.operators.op_drops import (
+    CADHY_OT_AddDrop,
+    CADHY_OT_ClearDrops,
+    CADHY_OT_RemoveDrop,
+)
 from .blender.operators.op_export_cfd import CADHY_OT_ExportCFD
 from .blender.operators.op_export_cfd_template import CADHY_OT_ExportCFDTemplate
 from .blender.operators.op_export_excel import CADHY_OT_ExportChannelExcel
@@ -56,7 +61,7 @@ from .blender.panels.pt_updates import (
 )
 from .blender.preferences import CADHY_OT_OpenLogFile, CADHYPreferences
 from .blender.properties.object_props import CADHYCFDSettings, CADHYChannelSettings
-from .blender.properties.scene_props import CADHYSceneSettings, CADHYTransitionItem
+from .blender.properties.scene_props import CADHYDropItem, CADHYSceneSettings, CADHYTransitionItem
 
 # Keyboard shortcuts storage
 addon_keymaps = []
@@ -67,8 +72,9 @@ addon_keymaps = []
 classes = (
     # Addon Preferences (must be first for bl_idname to work)
     CADHYPreferences,
-    # Properties (TransitionItem must be before SceneSettings which uses it)
+    # Properties (TransitionItem and DropItem must be before SceneSettings which uses them)
     CADHYTransitionItem,
+    CADHYDropItem,
     CADHYSceneSettings,
     CADHYChannelSettings,
     CADHYCFDSettings,
@@ -93,6 +99,9 @@ classes = (
     CADHY_OT_AddTransition,
     CADHY_OT_RemoveTransition,
     CADHY_OT_ClearTransitions,
+    CADHY_OT_AddDrop,
+    CADHY_OT_RemoveDrop,
+    CADHY_OT_ClearDrops,
     CADHY_OT_DevReload,
     CADHY_OT_ExportAll,
     CADHY_OT_CheckUpdates,
