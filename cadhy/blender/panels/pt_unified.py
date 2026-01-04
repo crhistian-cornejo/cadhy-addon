@@ -100,9 +100,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_axis",
+            settings,
+            "ui_show_axis",
             icon="TRIA_DOWN" if settings.ui_show_axis else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Channel Build", icon="MOD_BUILD")
 
@@ -148,6 +150,7 @@ class CADHY_PT_Unified(Panel):
             channel_exists = False
             if settings.axis_object:
                 from ...core.util.naming import get_channel_name
+
                 channel_name = get_channel_name(settings.axis_object.name)
                 channel_exists = channel_name in bpy.data.objects
 
@@ -174,9 +177,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_section_params",
+            settings,
+            "ui_show_section_params",
             icon="TRIA_DOWN" if settings.ui_show_section_params else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Section Parameters", icon="PREFERENCES")
 
@@ -239,9 +244,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle and enable checkbox
         row = box.row()
         row.prop(
-            settings, "ui_show_cfd",
+            settings,
+            "ui_show_cfd",
             icon="TRIA_DOWN" if settings.ui_show_cfd else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.prop(settings, "cfd_enabled", text="")
         row.label(text="CFD Domain", icon="MOD_FLUIDSIM")
@@ -256,6 +263,7 @@ class CADHY_PT_Unified(Panel):
         cfd_domain_exists = False
         if settings.axis_object:
             from ...core.util.naming import get_cfd_domain_name
+
             cfd_domain_name = get_cfd_domain_name(settings.axis_object.name)
             cfd_domain_exists = cfd_domain_name in bpy.data.objects
             if cfd_domain_exists:
@@ -323,9 +331,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_mesh_quality",
+            settings,
+            "ui_show_mesh_quality",
             icon="TRIA_DOWN" if settings.ui_show_mesh_quality else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Mesh Quality", icon="MESH_GRID")
 
@@ -397,9 +407,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_channel_info",
+            settings,
+            "ui_show_channel_info",
             icon="TRIA_DOWN" if settings.ui_show_channel_info else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Channel Info", icon="INFO")
 
@@ -449,9 +461,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_sections",
+            settings,
+            "ui_show_sections",
             icon="TRIA_DOWN" if settings.ui_show_sections else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Cross-Sections", icon="SNAP_MIDPOINT")
 
@@ -487,9 +501,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_export",
+            settings,
+            "ui_show_export",
             icon="TRIA_DOWN" if settings.ui_show_export else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Export", icon="EXPORT")
 
@@ -529,9 +545,11 @@ class CADHY_PT_Unified(Panel):
         # Header with collapse toggle
         row = box.row()
         row.prop(
-            settings, "ui_show_render",
+            settings,
+            "ui_show_render",
             icon="TRIA_DOWN" if settings.ui_show_render else "TRIA_RIGHT",
-            icon_only=True, emboss=False
+            icon_only=True,
+            emboss=False,
         )
         row.label(text="Render", icon="RENDER_STILL")
 

@@ -1,6 +1,6 @@
 [project]
 name = "cadhy-addon"
-version = "0.3.3"
+version = "0.3.7"
 description = "CADHY - Blender Add-on for Hydraulic Infrastructure Modeling"
 readme = "README.md"
 license = { text = "GPL-3.0-only" }

@@ -155,8 +155,7 @@ class CADHY_OT_ExportCFDTemplate(Operator):
                 )
 
                 logger.set_success(
-                    f"Exported OpenFOAM case to {paths['case']} with "
-                    f"{len(generated)} config files including BC"
+                    f"Exported OpenFOAM case to {paths['case']} with {len(generated)} config files including BC"
                 )
             else:
                 logger.set_success(f"Exported {len(patch_files)} files to {output_dir}")
