@@ -760,9 +760,7 @@ def _get_profile_edge_ranges(params: ChannelParams, num_verts: int) -> dict:
     return {"circular": True, "count": num_verts}
 
 
-def build_channel_mesh(
-    curve_obj, params: ChannelParams, alignment=None
-) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
+def build_channel_mesh(curve_obj, params: ChannelParams, alignment=None) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
     """
     Build channel mesh geometry from curve and parameters.
 
