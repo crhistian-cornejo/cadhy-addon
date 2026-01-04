@@ -54,6 +54,7 @@ def _cadhy_excepthook(exc_type, exc_value, exc_traceback):
 def _validate_blender_version():
     """Validate that Blender version meets minimum requirements."""
     import bpy
+
     from .core.util.versioning import MIN_BLENDER_VERSION
 
     current_version = bpy.app.version
