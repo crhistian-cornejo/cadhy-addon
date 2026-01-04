@@ -162,6 +162,16 @@ def _apply_quick_size(self, context):
         self.freeboard = fb
         self.side_slope = slope
 
+        # Also update active channel if editing an existing CADHY channel
+        obj = context.active_object
+        if obj and obj.type == "MESH":
+            ch = getattr(obj, "cadhy_channel", None)
+            if ch and ch.is_cadhy_object:
+                ch.bottom_width = w
+                ch.height = h
+                ch.freeboard = fb
+                ch.side_slope = slope
+
 
 class CADHYSceneSettings(PropertyGroup):
     """Global CADHY settings stored at scene level."""
@@ -270,7 +280,7 @@ class CADHYSceneSettings(PropertyGroup):
             ("TRAP", "Trapezoidal", "Trapezoidal section with sloped sides"),
             ("RECT", "Rectangular", "Rectangular section with vertical walls"),
             ("TRI", "Triangular", "V-channel / triangular section"),
-            ("CIRC", "Circular", "Open circular channel (half-pipe)"),
+            ("CIRC", "Semi-circular U", "Open semicircular U-channel with lining thickness"),
             ("PIPE", "Pipe", "Closed commercial pipe with wall thickness"),
         ],
         default="TRAP",

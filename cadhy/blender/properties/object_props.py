@@ -34,7 +34,7 @@ class CADHYChannelSettings(PropertyGroup):
             ("TRAP", "Trapezoidal", "Trapezoidal section with sloped sides"),
             ("RECT", "Rectangular", "Rectangular section with vertical walls"),
             ("TRI", "Triangular", "V-channel / triangular section"),
-            ("CIRC", "Circular", "Open circular channel (half-pipe)"),
+            ("CIRC", "Semi-circular U", "Open semicircular U-channel with lining thickness"),
             ("PIPE", "Pipe", "Closed commercial pipe with wall thickness"),
         ],
         default="TRAP",

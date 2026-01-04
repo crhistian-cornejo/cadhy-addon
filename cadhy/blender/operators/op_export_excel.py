@@ -207,7 +207,7 @@ def export_channel_to_excel(obj, filepath: str, auto_install: bool = True) -> tu
             "TRAP": "Trapezoidal",
             "RECT": "Rectangular",
             "TRI": "Triangular",
-            "CIRC": "Circular",
+            "CIRC": "Semi-circular U",
             "PIPE": "Pipe",
         }
 

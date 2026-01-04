@@ -22,7 +22,7 @@ class CADHY_OT_SetSectionType(Operator):
             ("TRAP", "Trapezoidal", ""),
             ("RECT", "Rectangular", ""),
             ("TRI", "Triangular", ""),
-            ("CIRC", "Circular", ""),
+            ("CIRC", "Semi-circular U", ""),
             ("PIPE", "Pipe", ""),
         ],
         default="TRAP",
@@ -35,6 +35,13 @@ class CADHY_OT_SetSectionType(Operator):
         # Set to custom size when changing type manually
         if hasattr(settings, "quick_size"):
             settings.quick_size = "CUSTOM"
+
+        # Also update active channel if editing an existing CADHY channel
+        obj = context.active_object
+        if obj and obj.type == "MESH":
+            ch = getattr(obj, "cadhy_channel", None)
+            if ch and ch.is_cadhy_object:
+                ch.section_type = self.section_type
 
         return {"FINISHED"}
 
