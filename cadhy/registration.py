@@ -6,13 +6,20 @@ Includes keyboard shortcuts registration similar to major addons.
 
 import bpy
 
-from .blender.menus.pie_main import CADHY_MT_PieMenu, CADHY_OT_CallPieMenu
+from .blender.menus.pie_main import (
+    CADHY_MT_ExportSubmenu,
+    CADHY_MT_PieMenu,
+    CADHY_OT_CallPieMenu,
+    CADHY_OT_QuickExportCFD,
+    CADHY_OT_QuickExportReport,
+)
 from .blender.operators.op_assign_materials import CADHY_OT_AssignMaterials
 from .blender.operators.op_build_cfd_domain import CADHY_OT_BuildCFDDomain
 from .blender.operators.op_build_channel import CADHY_OT_BuildChannel
 from .blender.operators.op_dev_reload import CADHY_OT_DevReload
 from .blender.operators.op_export_cfd import CADHY_OT_ExportCFD
 from .blender.operators.op_export_cfd_template import CADHY_OT_ExportCFDTemplate
+from .blender.operators.op_export_pdf_report import CADHY_OT_ExportPDFReport
 from .blender.operators.op_export_report import CADHY_OT_ExportReport
 from .blender.operators.op_generate_sections import CADHY_OT_GenerateSections
 from .blender.operators.op_help import CADHY_OT_OpenDocs, CADHY_OT_ShowHelp, CADHY_OT_ShowKeymap
@@ -61,6 +68,7 @@ classes = (
     CADHY_OT_GenerateSections,
     CADHY_OT_ExportCFD,
     CADHY_OT_ExportCFDTemplate,
+    CADHY_OT_ExportPDFReport,
     CADHY_OT_ExportReport,
     CADHY_OT_ValidateMesh,
     CADHY_OT_SetupRender,
@@ -84,9 +92,12 @@ classes = (
     CADHY_OT_SavePreset,
     CADHY_OT_LoadPreset,
     CADHY_OT_DeletePreset,
-    # Menus
+    # Menus and quick operators
+    CADHY_MT_ExportSubmenu,
     CADHY_MT_PieMenu,
     CADHY_OT_CallPieMenu,
+    CADHY_OT_QuickExportCFD,
+    CADHY_OT_QuickExportReport,
     # Panels
     CADHY_PT_Main,
     CADHY_PT_ChannelInfo,

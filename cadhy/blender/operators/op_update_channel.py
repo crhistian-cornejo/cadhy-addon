@@ -59,6 +59,8 @@ class CADHY_OT_UpdateChannel(Operator):
                 "TRAP": SectionType.TRAPEZOIDAL,
                 "RECT": SectionType.RECTANGULAR,
                 "CIRC": SectionType.CIRCULAR,
+                "TRI": SectionType.TRIANGULAR,
+                "PIPE": SectionType.PIPE,
             }
 
             # Build params from object properties

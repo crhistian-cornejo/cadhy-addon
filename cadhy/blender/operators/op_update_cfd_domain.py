@@ -50,6 +50,8 @@ class CADHY_OT_UpdateCFDDomain(Operator):
                 "TRAP": SectionType.TRAPEZOIDAL,
                 "RECT": SectionType.RECTANGULAR,
                 "CIRC": SectionType.CIRCULAR,
+                "TRI": SectionType.TRIANGULAR,
+                "PIPE": SectionType.PIPE,
             }
 
             # Get channel parameters from linked channel or scene settings

@@ -58,6 +58,8 @@ class CADHY_OT_ExportReport(Operator):
                 "TRAP": SectionType.TRAPEZOIDAL,
                 "RECT": SectionType.RECTANGULAR,
                 "CIRC": SectionType.CIRCULAR,
+                "TRI": SectionType.TRIANGULAR,
+                "PIPE": SectionType.PIPE,
             }
 
             channel_params = ChannelParams(

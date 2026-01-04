@@ -122,6 +122,8 @@ class CADHY_OT_ExportAll(bpy.types.Operator):
             "TRAP": SectionType.TRAPEZOIDAL,
             "RECT": SectionType.RECTANGULAR,
             "CIRC": SectionType.CIRCULAR,
+            "TRI": SectionType.TRIANGULAR,
+            "PIPE": SectionType.PIPE,
         }
 
         channel_params = ChannelParams(

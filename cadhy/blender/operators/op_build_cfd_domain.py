@@ -77,6 +77,8 @@ class CADHY_OT_BuildCFDDomain(Operator):
                     "TRAP": SectionType.TRAPEZOIDAL,
                     "RECT": SectionType.RECTANGULAR,
                     "CIRC": SectionType.CIRCULAR,
+                    "TRI": SectionType.TRIANGULAR,
+                    "PIPE": SectionType.PIPE,
                 }
 
                 # Try to find existing channel with this axis to use its parameters

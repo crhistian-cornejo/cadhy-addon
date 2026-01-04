@@ -56,6 +56,8 @@ class CADHY_OT_GenerateSections(Operator):
                 "TRAP": SectionType.TRAPEZOIDAL,
                 "RECT": SectionType.RECTANGULAR,
                 "CIRC": SectionType.CIRCULAR,
+                "TRI": SectionType.TRIANGULAR,
+                "PIPE": SectionType.PIPE,
             }
 
             channel_params = ChannelParams(

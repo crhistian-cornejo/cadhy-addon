@@ -5,6 +5,52 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.6] - 2026-01-03
+
+### Added
+
+- **Export Format Selection in Pie Menu**: Alt+C now shows export submenu
+  - Export CFD domain as STL (OpenFOAM) or OBJ (Fluent)
+  - Export Channel mesh as STL
+  - Report exports: JSON, TXT, PDF formats
+  - Quick access to OpenFOAM case template
+
+- **PDF Report Generation**: Pre-design documentation export
+  - Professional PDF reports with project summary
+  - Channel parameters, CFD domain info, sections data
+  - HTML fallback when reportlab not installed
+  - Tables with hydraulic calculations
+
+- **Quick Export Operators**: Streamlined export workflow
+  - CADHY_OT_QuickExportCFD for mesh export
+  - CADHY_OT_QuickExportReport for report export
+  - Format selection before file dialog
+
+### Changed
+
+- **Sections Generation**: Added support for TRIANGULAR and PIPE section types
+  - All section type mappings updated across operators
+  - Hydraulic calculations for triangular and pipe sections
+
+- **Pie Menu Layout**: Export now opens submenu instead of single action
+  - Validate moved to top-right position
+  - CFD Setup moved to bottom-left position
+
+### Fixed
+
+- Section type mapping missing TRI and PIPE in multiple operators
+  - op_build_channel.py
+  - op_build_cfd_domain.py
+  - op_update_channel.py
+  - op_update_cfd_domain.py
+  - op_generate_sections.py
+  - op_export_report.py
+  - pt_export.py
+
+- Top width calculation for triangular and pipe sections in build_sections.py
+
+---
+
 ## [0.3.5] - 2026-01-03
 
 ### Added

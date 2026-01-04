@@ -68,8 +68,22 @@ def generate_sections(
             top_width = channel_params.bottom_width + 2 * channel_params.side_slope * water_depth
         elif channel_params.section_type.value == "RECT":
             top_width = channel_params.bottom_width
+        elif channel_params.section_type.value == "TRI":
+            # Triangular: top width grows with depth
+            top_width = 2 * channel_params.side_slope * water_depth
+        elif channel_params.section_type.value == "PIPE":
+            # Pipe: closed circular section
+            r = (channel_params.bottom_width - 2 * channel_params.lining_thickness) / 2
+            if water_depth >= 2 * r:
+                top_width = 0  # Full pipe
+            else:
+                h_from_center = water_depth - r
+                if abs(h_from_center) <= r:
+                    top_width = 2 * math.sqrt(r * r - h_from_center * h_from_center)
+                else:
+                    top_width = 0
         else:
-            # Circular - approximate
+            # Circular (open half-pipe)
             r = channel_params.bottom_width / 2
             if water_depth >= channel_params.bottom_width:
                 top_width = 0
