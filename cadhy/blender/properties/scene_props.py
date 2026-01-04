@@ -6,13 +6,85 @@ Global scene-level settings for CADHY.
 import bpy
 from bpy.props import (
     BoolProperty,
+    CollectionProperty,
     EnumProperty,
     FloatProperty,
     FloatVectorProperty,
+    IntProperty,
     PointerProperty,
     StringProperty,
 )
 from bpy.types import PropertyGroup
+
+
+class CADHYTransitionItem(PropertyGroup):
+    """Single transition zone definition."""
+
+    start_station: FloatProperty(
+        name="Start",
+        description="Start station of transition (meters)",
+        default=0.0,
+        min=0.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    end_station: FloatProperty(
+        name="End",
+        description="End station of transition (meters)",
+        default=10.0,
+        min=0.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    # Target parameters (what to transition TO)
+    target_bottom_width: FloatProperty(
+        name="Target Width",
+        description="Target bottom width at end of transition",
+        default=2.0,
+        min=0.1,
+        max=100.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    target_height: FloatProperty(
+        name="Target Height",
+        description="Target height at end of transition",
+        default=2.0,
+        min=0.1,
+        max=50.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    target_side_slope: FloatProperty(
+        name="Target Slope",
+        description="Target side slope at end of transition (H:V)",
+        default=1.5,
+        min=0.0,
+        max=10.0,
+    )
+
+    # Which parameters to transition
+    vary_width: BoolProperty(
+        name="Vary Width",
+        description="Transition the bottom width",
+        default=True,
+    )
+
+    vary_height: BoolProperty(
+        name="Vary Height",
+        description="Transition the height",
+        default=False,
+    )
+
+    vary_slope: BoolProperty(
+        name="Vary Slope",
+        description="Transition the side slope",
+        default=False,
+    )
 
 
 class CADHYSceneSettings(PropertyGroup):
@@ -433,4 +505,30 @@ class CADHYSceneSettings(PropertyGroup):
         name="Show Channel Info",
         description="Expand channel info section",
         default=False,
+    )
+
+    ui_show_transitions: BoolProperty(
+        name="Show Transitions",
+        description="Expand transitions section",
+        default=False,
+    )
+
+    # Transitions - enable/disable
+    transitions_enabled: BoolProperty(
+        name="Enable Transitions",
+        description="Enable section transitions along channel",
+        default=False,
+    )
+
+    active_transition_index: IntProperty(
+        name="Active Transition",
+        description="Index of active transition",
+        default=0,
+    )
+
+    # Transitions collection
+    transitions: CollectionProperty(
+        type=CADHYTransitionItem,
+        name="Transitions",
+        description="List of section transitions",
     )

@@ -119,7 +119,7 @@ jobs:
           
           required = [
               'cadhy/__init__.py',
-              'cadhy/register.py',
+              'cadhy/registration.py',
               'cadhy/core/__init__.py',
               'cadhy/blender/__init__.py',
           ]

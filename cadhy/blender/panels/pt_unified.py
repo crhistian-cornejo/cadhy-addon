@@ -60,6 +60,11 @@ class CADHY_PT_Unified(Panel):
         self.draw_section_params_section(context, layout, settings, is_editing, ch)
 
         # ═══════════════════════════════════════════════════════════════════
+        # SECTION: TRANSITIONS
+        # ═══════════════════════════════════════════════════════════════════
+        self.draw_transitions_section(context, layout, settings)
+
+        # ═══════════════════════════════════════════════════════════════════
         # SECTION: CFD DOMAIN
         # ═══════════════════════════════════════════════════════════════════
         self.draw_cfd_section(context, layout, settings, obj)
@@ -239,6 +244,71 @@ class CADHY_PT_Unified(Panel):
             prof_res = getattr(source, "profile_resolution", 1.0)
             if abs(res_m - prof_res) > 0.01:
                 col.label(text=f"Match to {res_m:.1f}m for square faces", icon="INFO")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # TRANSITIONS SECTION
+    # ═══════════════════════════════════════════════════════════════════════
+    def draw_transitions_section(self, context, layout, settings):
+        """Draw section transitions configuration."""
+        box = layout.box()
+
+        # Header with collapse toggle and enable checkbox
+        row = box.row()
+        row.prop(
+            settings,
+            "ui_show_transitions",
+            icon="TRIA_DOWN" if settings.ui_show_transitions else "TRIA_RIGHT",
+            icon_only=True,
+            emboss=False,
+        )
+        row.label(text="Transitions", icon="MOD_ARRAY")
+        row.prop(settings, "transitions_enabled", text="")
+
+        if not settings.ui_show_transitions:
+            return
+
+        col = box.column()
+        col.enabled = settings.transitions_enabled
+
+        # Info about what transitions do
+        if not settings.transitions:
+            col.label(text="No transitions defined", icon="INFO")
+            col.label(text="Add transitions to vary section along path")
+
+        # List of transitions
+        for i, trans in enumerate(settings.transitions):
+            trans_box = col.box()
+            header = trans_box.row()
+            header.label(text=f"Transition {i + 1}", icon="ARROW_LEFTRIGHT")
+            header.operator("cadhy.remove_transition", text="", icon="X").index = i
+
+            # Station range
+            row = trans_box.row(align=True)
+            row.prop(trans, "start_station", text="From")
+            row.prop(trans, "end_station", text="To")
+
+            # Target parameters with checkboxes
+            sub = trans_box.column(align=True)
+
+            # Width
+            row = sub.row(align=True)
+            row.prop(trans, "vary_width", text="")
+            row.prop(trans, "target_bottom_width", text="Width")
+            row.enabled = trans.vary_width or not trans.vary_width  # Show but gray if not
+
+            # Height
+            row = sub.row(align=True)
+            row.prop(trans, "vary_height", text="")
+            row.prop(trans, "target_height", text="Height")
+
+            # Slope
+            row = sub.row(align=True)
+            row.prop(trans, "vary_slope", text="")
+            row.prop(trans, "target_side_slope", text="Slope")
+
+        # Add transition button
+        col.separator()
+        col.operator("cadhy.add_transition", text="Add Transition", icon="ADD")
 
     # ═══════════════════════════════════════════════════════════════════════
     # CFD DOMAIN SECTION

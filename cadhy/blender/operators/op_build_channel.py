@@ -8,6 +8,7 @@ from bpy.types import Operator
 
 from ...core.geom.build_channel import build_channel_mesh, create_channel_object, get_curve_length
 from ...core.model.channel_params import ChannelParams, SectionType
+from ...core.model.transition_params import ChannelAlignment
 from ...core.util.logging import OperationLogger
 from ...core.util.naming import COLLECTION_CHANNELS, get_channel_name
 from ...core.util.versioning import CADHY_VERSION_STRING
@@ -73,9 +74,29 @@ class CADHY_OT_BuildChannel(Operator):
                     profile_resolution=getattr(settings, "profile_resolution", settings.resolution_m),
                 )
 
+                # Build alignment with transitions if enabled
+                alignment = None
+                if settings.transitions_enabled and len(settings.transitions) > 0:
+                    alignment = ChannelAlignment(base_params=params)
+                    for trans in settings.transitions:
+                        # Determine target values based on vary flags
+                        target_width = trans.target_bottom_width if trans.vary_width else None
+                        target_height = trans.target_height if trans.vary_height else None
+                        target_slope = trans.target_side_slope if trans.vary_slope else None
+
+                        # Only add transition if at least one parameter varies
+                        if target_width is not None or target_height is not None or target_slope is not None:
+                            alignment.add_transition(
+                                start_station=trans.start_station,
+                                end_station=trans.end_station,
+                                target_bottom_width=target_width,
+                                target_height=target_height,
+                                target_side_slope=target_slope,
+                            )
+
                 # Build mesh geometry
                 wm.progress_update(30)
-                vertices, faces = build_channel_mesh(axis_obj, params)
+                vertices, faces = build_channel_mesh(axis_obj, params, alignment=alignment)
 
                 if not vertices or not faces:
                     wm.progress_end()

@@ -760,13 +760,16 @@ def _get_profile_edge_ranges(params: ChannelParams, num_verts: int) -> dict:
     return {"circular": True, "count": num_verts}
 
 
-def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
+def build_channel_mesh(
+    curve_obj, params: ChannelParams, alignment=None
+) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
     """
     Build channel mesh geometry from curve and parameters.
 
     Args:
         curve_obj: Blender curve object (axis)
-        params: Channel parameters
+        params: Channel parameters (base parameters)
+        alignment: Optional ChannelAlignment for transitions
 
     Returns:
         Tuple of (vertices, faces) for mesh creation
@@ -787,13 +790,24 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
         if (end_pos - start_pos).length < params.resolution_m * 0.5:
             samples = samples[:-1]  # Remove last point (it's a duplicate of first)
 
-    # Generate section profiles (inner and outer for lining)
-    inner_verts, outer_verts = generate_section_vertices_with_lining(params)
-    has_lining = len(outer_verts) > 0
+    # Check if we have transitions
+    has_transitions = alignment is not None and len(alignment.transitions) > 0
 
-    num_inner_verts = len(inner_verts)
-    num_outer_verts = len(outer_verts) if has_lining else 0
-    total_verts_per_section = num_inner_verts + num_outer_verts
+    # For uniform channels (no transitions), generate profile once
+    if not has_transitions:
+        inner_verts, outer_verts = generate_section_vertices_with_lining(params)
+        has_lining = len(outer_verts) > 0
+        num_inner_verts = len(inner_verts)
+        num_outer_verts = len(outer_verts) if has_lining else 0
+        total_verts_per_section = num_inner_verts + num_outer_verts
+    else:
+        # With transitions: we need consistent vertex counts
+        # Generate profile for base params to get vertex count
+        inner_verts, outer_verts = generate_section_vertices_with_lining(params)
+        has_lining = len(outer_verts) > 0
+        num_inner_verts = len(inner_verts)
+        num_outer_verts = len(outer_verts) if has_lining else 0
+        total_verts_per_section = num_inner_verts + num_outer_verts
 
     vertices = []
     faces = []
@@ -803,9 +817,16 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
         pos = sample["position"]
         tangent = sample["tangent"]
         normal = sample["normal"]
+        station = sample.get("station", 0.0)
 
         # Calculate local coordinate system
         binormal = tangent.cross(normal).normalized()
+
+        # Get parameters for this station (may be interpolated)
+        if has_transitions:
+            section_params = alignment.get_params_at_station(station)
+            inner_verts, outer_verts = generate_section_vertices_with_lining(section_params)
+        # else: use pre-generated inner_verts, outer_verts
 
         # Transform inner section vertices to world position
         for sx, sy in inner_verts:

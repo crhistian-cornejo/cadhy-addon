@@ -5,6 +5,28 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.9] - 2026-01-03
+
+### Added
+
+- **Section Transitions**: Vary channel geometry along the path
+  - Add multiple transition zones that change bottom width, height, and/or side slope
+  - Linear interpolation between section parameters
+  - Enable/disable transitions with single checkbox
+  - UI in new "Transitions" collapsible section
+
+- **Transition Model**: Core data structures for parametric transitions
+  - `ChannelAlignment` wraps base parameters with transition zones
+  - `TransitionZone` defines start/end stations and target parameters
+  - `StationParams` holds per-station parameter overrides
+
+### Fixed
+
+- **CI Pipeline**: Fixed release.yml validation referencing wrong file
+  - Changed `cadhy/register.py` to `cadhy/registration.py`
+
+---
+
 ## [0.3.8] - 2026-01-03
 
 ### Fixed

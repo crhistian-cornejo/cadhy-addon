@@ -30,6 +30,11 @@ from .blender.operators.op_presets import CADHY_OT_DeletePreset, CADHY_OT_LoadPr
 from .blender.operators.op_setup_render import CADHY_OT_SetupRender
 from .blender.operators.op_setup_workspace import CADHY_OT_ResetWorkspace, CADHY_OT_SetupWorkspace
 from .blender.operators.op_station_markers import CADHY_OT_ClearStationMarkers, CADHY_OT_CreateStationMarkers
+from .blender.operators.op_transitions import (
+    CADHY_OT_AddTransition,
+    CADHY_OT_ClearTransitions,
+    CADHY_OT_RemoveTransition,
+)
 from .blender.operators.op_update_cfd_domain import CADHY_OT_UpdateCFDDomain
 from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
 from .blender.operators.op_validate_mesh import CADHY_OT_ValidateMesh
@@ -51,7 +56,7 @@ from .blender.panels.pt_updates import (
 )
 from .blender.preferences import CADHY_OT_OpenLogFile, CADHYPreferences
 from .blender.properties.object_props import CADHYCFDSettings, CADHYChannelSettings
-from .blender.properties.scene_props import CADHYSceneSettings
+from .blender.properties.scene_props import CADHYSceneSettings, CADHYTransitionItem
 
 # Keyboard shortcuts storage
 addon_keymaps = []
@@ -62,7 +67,8 @@ addon_keymaps = []
 classes = (
     # Addon Preferences (must be first for bl_idname to work)
     CADHYPreferences,
-    # Properties
+    # Properties (TransitionItem must be before SceneSettings which uses it)
+    CADHYTransitionItem,
     CADHYSceneSettings,
     CADHYChannelSettings,
     CADHYCFDSettings,
@@ -84,6 +90,9 @@ classes = (
     CADHY_OT_AssignMaterials,
     CADHY_OT_CreateStationMarkers,
     CADHY_OT_ClearStationMarkers,
+    CADHY_OT_AddTransition,
+    CADHY_OT_RemoveTransition,
+    CADHY_OT_ClearTransitions,
     CADHY_OT_DevReload,
     CADHY_OT_ExportAll,
     CADHY_OT_CheckUpdates,
