@@ -130,6 +130,23 @@ class CADHYSceneSettings(PropertyGroup):
         subtype="DISTANCE",
     )
 
+    # Profile subdivision for uniform mesh
+    subdivide_profile: BoolProperty(
+        name="Subdivide Profile",
+        description="Subdivide section profile edges for uniform mesh density",
+        default=True,
+    )
+
+    profile_resolution: FloatProperty(
+        name="Profile Resolution",
+        description="Maximum edge length in section profile (meters). Set to match axis resolution for square faces",
+        default=1.0,
+        min=0.1,
+        max=10.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
     # CFD Settings
     cfd_enabled: BoolProperty(
         name="Generate CFD Domain", description="Generate CFD fluid domain alongside channel", default=True

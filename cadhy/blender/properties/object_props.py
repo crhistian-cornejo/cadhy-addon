@@ -71,6 +71,22 @@ class CADHYChannelSettings(PropertyGroup):
         name="Resolution", description="Sampling resolution along axis", default=1.0, min=0.1, max=100.0, unit="LENGTH"
     )
 
+    # Profile subdivision
+    subdivide_profile: BoolProperty(
+        name="Subdivide Profile",
+        description="Subdivide section profile edges for uniform mesh density",
+        default=True,
+    )
+
+    profile_resolution: FloatProperty(
+        name="Profile Resolution",
+        description="Maximum edge length in section profile",
+        default=1.0,
+        min=0.1,
+        max=10.0,
+        unit="LENGTH",
+    )
+
     # Computed properties (read-only, for display)
     total_length: FloatProperty(name="Total Length", description="Total length of channel", default=0.0, unit="LENGTH")
 

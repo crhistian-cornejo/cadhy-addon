@@ -5,6 +5,60 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.4] - 2026-01-03
+
+### Added
+
+- **Pie Menu**: Quick access to all CADHY operations
+  - Press `Alt+C` to open the pie menu
+  - Context-aware buttons (shows "Update" vs "Build" based on selection)
+  - 8 operations: Channel, CFD, Sections, Export, Markers, Report, Validate, Materials
+
+- **Workspace Setup**: Optimized workspace for channel design
+  - Creates "CADHY" workspace with engineering-friendly settings
+  - Top-down view, metric units, solid shading with cavity
+  - Stats overlay, vertex snapping enabled
+  - Setup/Reset buttons in Updates panel
+
+- **CFD Export Templates**: Pre-configured export for CFD solvers
+  - OpenFOAM (snappyHexMesh, cfMesh)
+  - ANSYS Fluent
+  - STAR-CCM+
+  - FLOW-3D
+  - SimScale
+  - Generic CFD
+  - Auto-generates OpenFOAM dictionary files (blockMeshDict, snappyHexMeshDict)
+  - Exports patches as separate STL files
+
+- **Blender Extensions Platform Support**: Ready for Blender 4.2+
+  - Added `blender_manifest.toml` with full metadata
+  - Compatible with new Extensions repository
+
+- **Presets System**: Save and load channel configurations
+  - Built-in presets: Irrigation, Drainage, Culverts
+  - Save custom presets for reuse
+  - Presets menu in main panel
+
+- **Help System**: Quick reference for shortcuts and features
+  - Keyboard shortcuts viewer
+  - Links to documentation
+
+### Changed
+
+- **Keyboard Shortcuts**: Changed to avoid conflicts with Blender defaults
+  - `Alt+C`: CADHY Pie Menu
+  - `Alt+Shift+B`: Build Channel
+  - `Alt+Shift+U`: Update Channel
+  - `Alt+Shift+D`: Build CFD Domain
+  - `Alt+Shift+S`: Generate Sections
+
+### Fixed
+
+- Lint errors in build_channel.py (unused variables)
+- Lint errors in op_presets.py (unused imports)
+
+---
+
 ## [0.3.3] - 2026-01-03
 
 ### Fixed

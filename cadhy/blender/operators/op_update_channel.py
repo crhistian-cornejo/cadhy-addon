@@ -16,7 +16,7 @@ class CADHY_OT_UpdateChannel(Operator):
 
     bl_idname = "cadhy.update_channel"
     bl_label = "Update Channel"
-    bl_description = "Regenerate channel mesh using current parameters (Ctrl+Shift+U)"
+    bl_description = "Regenerate channel mesh using current parameters (Alt+Shift+U)"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -70,6 +70,8 @@ class CADHY_OT_UpdateChannel(Operator):
                 freeboard=ch.freeboard,
                 lining_thickness=ch.lining_thickness,
                 resolution_m=ch.resolution_m,
+                subdivide_profile=getattr(ch, "subdivide_profile", True),
+                profile_resolution=getattr(ch, "profile_resolution", ch.resolution_m),
             )
 
             # Regenerate mesh geometry

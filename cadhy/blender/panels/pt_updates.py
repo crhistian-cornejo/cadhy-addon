@@ -78,6 +78,21 @@ class CADHY_PT_Updates(Panel):
 
         layout.separator()
 
+        # Workspace
+        box = layout.box()
+        box.label(text="Workspace", icon="WORKSPACE")
+
+        row = box.row(align=True)
+        row.operator("cadhy.setup_workspace", text="Setup Workspace", icon="ADD")
+        row.operator("cadhy.reset_workspace", text="Reset", icon="FILE_REFRESH")
+
+        # Keyboard shortcut info
+        col = box.column(align=True)
+        col.scale_y = 0.8
+        col.label(text="Pie Menu: Alt+C", icon="EVENT_C")
+
+        layout.separator()
+
         # Development
         box = layout.box()
         box.label(text="Development", icon="CONSOLE")

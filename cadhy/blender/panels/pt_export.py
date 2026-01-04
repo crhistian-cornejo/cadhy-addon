@@ -39,6 +39,9 @@ class CADHY_PT_Export(Panel):
         row.scale_y = 1.3
         row.operator("cadhy.export_cfd", text="Export CFD Mesh", icon="EXPORT")
 
+        row = box.row(align=True)
+        row.operator("cadhy.export_cfd_template", text="Export with Template", icon="PRESET")
+
         # Show selected object info
         obj = context.active_object
         if obj and obj.type == "MESH":

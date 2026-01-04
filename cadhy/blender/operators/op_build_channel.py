@@ -18,7 +18,7 @@ class CADHY_OT_BuildChannel(Operator):
 
     bl_idname = "cadhy.build_channel"
     bl_label = "Build Channel"
-    bl_description = "Generate channel mesh from selected axis curve (Ctrl+Shift+B)"
+    bl_description = "Generate channel mesh from selected axis curve (Alt+Shift+B)"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -67,6 +67,8 @@ class CADHY_OT_BuildChannel(Operator):
                     freeboard=settings.freeboard,
                     lining_thickness=settings.lining_thickness,
                     resolution_m=settings.resolution_m,
+                    subdivide_profile=getattr(settings, "subdivide_profile", True),
+                    profile_resolution=getattr(settings, "profile_resolution", settings.resolution_m),
                 )
 
                 # Build mesh geometry
@@ -94,6 +96,8 @@ class CADHY_OT_BuildChannel(Operator):
                 ch_settings.freeboard = settings.freeboard
                 ch_settings.lining_thickness = settings.lining_thickness
                 ch_settings.resolution_m = settings.resolution_m
+                ch_settings.subdivide_profile = getattr(settings, "subdivide_profile", True)
+                ch_settings.profile_resolution = getattr(settings, "profile_resolution", settings.resolution_m)
                 ch_settings.total_length = get_curve_length(axis_obj)
                 ch_settings.cadhy_version = CADHY_VERSION_STRING
                 ch_settings.is_cadhy_object = True

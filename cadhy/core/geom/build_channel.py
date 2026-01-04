@@ -11,6 +11,72 @@ from mathutils import Vector
 from ..model.channel_params import ChannelParams, SectionType
 
 
+def subdivide_profile_edge(
+    p1: Tuple[float, float], p2: Tuple[float, float], max_length: float
+) -> List[Tuple[float, float]]:
+    """
+    Subdivide an edge between two points to ensure no segment exceeds max_length.
+
+    Args:
+        p1: Start point (x, y)
+        p2: End point (x, y)
+        max_length: Maximum allowed edge length
+
+    Returns:
+        List of points from p1 to p2 (inclusive) with subdivisions
+    """
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    edge_length = math.sqrt(dx * dx + dy * dy)
+
+    if edge_length <= max_length or edge_length < 0.001:
+        return [p1, p2]
+
+    # Calculate number of subdivisions needed
+    num_segments = math.ceil(edge_length / max_length)
+    points = []
+
+    for i in range(num_segments + 1):
+        t = i / num_segments
+        x = p1[0] + dx * t
+        y = p1[1] + dy * t
+        points.append((x, y))
+
+    return points
+
+
+def subdivide_profile(profile: List[Tuple[float, float]], max_edge_length: float) -> List[Tuple[float, float]]:
+    """
+    Subdivide all edges in a profile to ensure uniform mesh density.
+
+    Args:
+        profile: List of (x, y) points defining the section profile
+        max_edge_length: Maximum allowed edge length
+
+    Returns:
+        Subdivided profile with more points
+    """
+    if len(profile) < 2 or max_edge_length <= 0:
+        return profile
+
+    subdivided = []
+
+    for i in range(len(profile)):
+        p1 = profile[i]
+        p2 = profile[(i + 1) % len(profile)]
+
+        # For open channels, don't connect last to first
+        if i == len(profile) - 1:
+            subdivided.append(p1)
+            break
+
+        edge_points = subdivide_profile_edge(p1, p2, max_edge_length)
+        # Add all points except last (will be added as next edge's first)
+        subdivided.extend(edge_points[:-1])
+
+    return subdivided
+
+
 def sample_curve_points(curve_obj, resolution_m: float, adaptive: bool = True) -> List[dict]:
     """
     Sample points along a Blender curve at specified resolution.
@@ -377,6 +443,8 @@ def generate_section_vertices_with_lining(
     """
     h = params.total_height
     lt = params.lining_thickness
+    subdivide = getattr(params, "subdivide_profile", True)
+    max_edge = getattr(params, "profile_resolution", params.resolution_m)
 
     if params.section_type == SectionType.TRAPEZOIDAL:
         bw = params.bottom_width
@@ -384,50 +452,109 @@ def generate_section_vertices_with_lining(
         tw = bw + 2 * ss * h
 
         # Inner profile (counterclockwise from bottom-left)
-        inner = [
+        # For open channels: BL -> BR -> TR -> TL (water-facing surfaces)
+        inner_base = [
             (-bw / 2, 0),
             (bw / 2, 0),
             (tw / 2, h),
             (-tw / 2, h),
         ]
 
+        if subdivide and max_edge > 0:
+            # Subdivide each edge separately to maintain structure
+            inner = []
+            # Edge 0: BL -> BR (bottom)
+            edge0 = subdivide_profile_edge(inner_base[0], inner_base[1], max_edge)
+            inner.extend(edge0[:-1])
+            # Edge 1: BR -> TR (right wall)
+            edge1 = subdivide_profile_edge(inner_base[1], inner_base[2], max_edge)
+            inner.extend(edge1[:-1])
+            # Edge 2: TR -> TL (top edge - not a face for open channel, but vertex needed)
+            inner.append(inner_base[2])
+            inner.append(inner_base[3])
+        else:
+            inner = inner_base
+
         if lt > 0:
             # Outer profile offset perpendicular to walls
-            # For sloped walls, offset perpendicular distance is lt
-            wall_offset = lt * math.sqrt(1 + ss * ss)  # Perpendicular offset on slope
-            outer = [
-                (-bw / 2 - lt, -lt),  # Bottom-left (offset down and left)
-                (bw / 2 + lt, -lt),  # Bottom-right (offset down and right)
-                (tw / 2 + wall_offset, h),  # Top-right (same height, offset outward)
-                (-tw / 2 - wall_offset, h),  # Top-left (same height, offset outward)
+            wall_offset = lt * math.sqrt(1 + ss * ss)
+            outer_base = [
+                (-bw / 2 - lt, -lt),
+                (bw / 2 + lt, -lt),
+                (tw / 2 + wall_offset, h),
+                (-tw / 2 - wall_offset, h),
             ]
+
+            if subdivide and max_edge > 0:
+                outer = []
+                edge0 = subdivide_profile_edge(outer_base[0], outer_base[1], max_edge)
+                outer.extend(edge0[:-1])
+                edge1 = subdivide_profile_edge(outer_base[1], outer_base[2], max_edge)
+                outer.extend(edge1[:-1])
+                outer.append(outer_base[2])
+                outer.append(outer_base[3])
+            else:
+                outer = outer_base
+
             return inner, outer
 
         return inner, []
 
     elif params.section_type == SectionType.RECTANGULAR:
         bw = params.bottom_width
-        inner = [
+        inner_base = [
             (-bw / 2, 0),
             (bw / 2, 0),
             (bw / 2, h),
             (-bw / 2, h),
         ]
 
+        if subdivide and max_edge > 0:
+            inner = []
+            # Bottom edge
+            edge0 = subdivide_profile_edge(inner_base[0], inner_base[1], max_edge)
+            inner.extend(edge0[:-1])
+            # Right wall
+            edge1 = subdivide_profile_edge(inner_base[1], inner_base[2], max_edge)
+            inner.extend(edge1[:-1])
+            # Top vertices
+            inner.append(inner_base[2])
+            inner.append(inner_base[3])
+        else:
+            inner = inner_base
+
         if lt > 0:
-            outer = [
+            outer_base = [
                 (-bw / 2 - lt, -lt),
                 (bw / 2 + lt, -lt),
-                (bw / 2 + lt, h),  # Same height at top
-                (-bw / 2 - lt, h),  # Same height at top
+                (bw / 2 + lt, h),
+                (-bw / 2 - lt, h),
             ]
+
+            if subdivide and max_edge > 0:
+                outer = []
+                edge0 = subdivide_profile_edge(outer_base[0], outer_base[1], max_edge)
+                outer.extend(edge0[:-1])
+                edge1 = subdivide_profile_edge(outer_base[1], outer_base[2], max_edge)
+                outer.extend(edge1[:-1])
+                outer.append(outer_base[2])
+                outer.append(outer_base[3])
+            else:
+                outer = outer_base
+
             return inner, outer
 
         return inner, []
 
     elif params.section_type == SectionType.CIRCULAR:
         r = params.bottom_width / 2
-        segments = 32
+        # For circular, calculate segments based on resolution
+        if subdivide and max_edge > 0:
+            circumference = math.pi * r  # Half circle
+            segments = max(16, int(circumference / max_edge))
+        else:
+            segments = 32
+
         inner = []
         for i in range(segments + 1):
             angle = math.pi + (math.pi * i / segments)
@@ -441,7 +568,7 @@ def generate_section_vertices_with_lining(
             for i in range(segments + 1):
                 angle = math.pi + (math.pi * i / segments)
                 x = outer_r * math.cos(angle)
-                y = outer_r * math.sin(angle) + r  # Same center
+                y = outer_r * math.sin(angle) + r
                 outer.append((x, y))
             return inner, outer
 
@@ -475,6 +602,52 @@ def _is_curve_cyclic(curve_obj) -> bool:
         if spline.use_cyclic_u:
             return True
     return False
+
+
+def _get_profile_edge_ranges(params: ChannelParams, num_verts: int) -> dict:
+    """
+    Get the vertex index ranges for each edge of the profile.
+
+    For a subdivided trapezoidal profile, we need to know which vertices
+    belong to which edge (bottom, right wall, top, left wall).
+
+    Returns:
+        Dictionary with edge names and their (start_idx, end_idx) ranges
+    """
+    if params.section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR):
+        # Calculate expected subdivisions based on params
+        h = params.total_height
+        subdivide = getattr(params, "subdivide_profile", True)
+        max_edge = getattr(params, "profile_resolution", params.resolution_m)
+
+        if params.section_type == SectionType.TRAPEZOIDAL:
+            bw = params.bottom_width
+            ss = params.side_slope
+            wall_length = math.sqrt(h * h + (ss * h) ** 2)
+        else:
+            bw = params.bottom_width
+            wall_length = h
+
+        if subdivide and max_edge > 0:
+            bottom_subdivs = max(1, math.ceil(bw / max_edge))
+            wall_subdivs = max(1, math.ceil(wall_length / max_edge))
+        else:
+            bottom_subdivs = 1
+            wall_subdivs = 1
+
+        # Profile order: bottom edge points, right wall points, TR, TL
+        # BL(0) -> ... -> BR -> ... -> TR -> TL
+        bottom_end = bottom_subdivs  # Vertices 0 to bottom_subdivs-1 are bottom, then BR
+        right_wall_end = bottom_end + wall_subdivs  # Then right wall points up to TR
+
+        return {
+            "bottom": (0, bottom_end),  # BL to BR (inclusive)
+            "right_wall": (bottom_end, right_wall_end),  # BR to TR
+            "top_right": right_wall_end,  # TR index
+            "top_left": right_wall_end + 1,  # TL index (last vertex)
+        }
+
+    return {"circular": True, "count": num_verts}
 
 
 def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], List[Tuple[int, ...]]]:
@@ -544,59 +717,97 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
     # For cyclic curves, we loop back to connect last section to first
     num_connections = num_samples if is_cyclic else num_samples - 1
 
+    # Get edge ranges for the profile
+    edge_info = _get_profile_edge_ranges(params, num_inner_verts)
+
     for i in range(num_connections):
         base_current = i * total_verts_per_section
-        # For cyclic: last section connects to first (index 0)
         next_idx = (i + 1) % num_samples if is_cyclic else i + 1
         base_next = next_idx * total_verts_per_section
 
         if is_open_channel:
-            # OPEN CHANNEL with lining
-            # Inner vertices: [BL(0), BR(1), TR(2), TL(3)]
-            # Outer vertices: [BL(4), BR(5), TR(6), TL(7)] if lining
+            # OPEN CHANNEL with subdivided profile
+            # Generate faces for each edge of the profile
 
-            # Inner surface (water-facing): bottom, right_wall, left_wall
-            inner_wall_edges = [(0, 1), (1, 2), (3, 0)]
+            bottom_start, bottom_end = edge_info["bottom"]
+            right_start, right_end = edge_info["right_wall"]
+            tr_idx = edge_info["top_right"]
+            tl_idx = edge_info["top_left"]
 
-            for j, j_next in inner_wall_edges:
+            # Bottom surface (from BL to BR)
+            for j in range(bottom_start, bottom_end):
+                j_next = j + 1
                 v1 = base_current + j
                 v2 = base_current + j_next
                 v3 = base_next + j_next
                 v4 = base_next + j
                 faces.append((v1, v2, v3, v4))
 
-            if has_lining:
-                # Outer surface (ground-facing): bottom, right_wall, left_wall
-                outer_offset = num_inner_verts
-                outer_wall_edges = [(0, 1), (1, 2), (3, 0)]
+            # Right wall (from BR to TR)
+            for j in range(right_start, right_end):
+                j_next = j + 1
+                v1 = base_current + j
+                v2 = base_current + j_next
+                v3 = base_next + j_next
+                v4 = base_next + j
+                faces.append((v1, v2, v3, v4))
 
-                for j, j_next in outer_wall_edges:
-                    # Reverse winding for correct normals (facing outward)
+            # Left wall (from TL to BL) - reversed direction
+            # TL -> BL means we go from tl_idx back to 0
+            v1 = base_current + tl_idx
+            v2 = base_current + 0  # BL
+            v3 = base_next + 0  # BL next
+            v4 = base_next + tl_idx
+            faces.append((v1, v2, v3, v4))
+
+            if has_lining:
+                outer_offset = num_inner_verts
+
+                # Outer bottom surface
+                for j in range(bottom_start, bottom_end):
+                    j_next = j + 1
+                    # Reverse winding for outward normals
                     v1 = base_current + outer_offset + j
                     v2 = base_next + outer_offset + j
                     v3 = base_next + outer_offset + j_next
                     v4 = base_current + outer_offset + j_next
                     faces.append((v1, v2, v3, v4))
 
-                # Top edge caps (connect inner top edge to outer top edge)
-                # Left cap: inner TL(3) to outer TL(7)
-                v1 = base_current + 3  # Inner TL current
-                v2 = base_next + 3  # Inner TL next
-                v3 = base_next + outer_offset + 3  # Outer TL next
-                v4 = base_current + outer_offset + 3  # Outer TL current
+                # Outer right wall
+                for j in range(right_start, right_end):
+                    j_next = j + 1
+                    v1 = base_current + outer_offset + j
+                    v2 = base_next + outer_offset + j
+                    v3 = base_next + outer_offset + j_next
+                    v4 = base_current + outer_offset + j_next
+                    faces.append((v1, v2, v3, v4))
+
+                # Outer left wall
+                v1 = base_current + outer_offset + tl_idx
+                v2 = base_next + outer_offset + tl_idx
+                v3 = base_next + outer_offset + 0
+                v4 = base_current + outer_offset + 0
                 faces.append((v1, v2, v3, v4))
 
-                # Right cap: inner TR(2) to outer TR(6)
-                v1 = base_current + outer_offset + 2  # Outer TR current
-                v2 = base_next + outer_offset + 2  # Outer TR next
-                v3 = base_next + 2  # Inner TR next
-                v4 = base_current + 2  # Inner TR current
+                # Top edge caps (connect inner top to outer top)
+                # Left cap: inner TL to outer TL
+                v1 = base_current + tl_idx
+                v2 = base_next + tl_idx
+                v3 = base_next + outer_offset + tl_idx
+                v4 = base_current + outer_offset + tl_idx
+                faces.append((v1, v2, v3, v4))
+
+                # Right cap: inner TR to outer TR
+                v1 = base_current + outer_offset + tr_idx
+                v2 = base_next + outer_offset + tr_idx
+                v3 = base_next + tr_idx
+                v4 = base_current + tr_idx
                 faces.append((v1, v2, v3, v4))
 
         else:
             # CLOSED CHANNEL (circular pipe): wrap around for inner
-            for j in range(num_inner_verts):
-                j_next = (j + 1) % num_inner_verts
+            for j in range(num_inner_verts - 1):
+                j_next = j + 1
 
                 v1 = base_current + j
                 v2 = base_current + j_next
@@ -605,12 +816,11 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
                 faces.append((v1, v2, v3, v4))
 
             if has_lining:
-                # Outer surface for circular (also wraps)
+                # Outer surface for circular
                 outer_offset = num_inner_verts
-                for j in range(num_outer_verts):
-                    j_next = (j + 1) % num_outer_verts
+                for j in range(num_outer_verts - 1):
+                    j_next = j + 1
 
-                    # Reverse winding for outward normals
                     v1 = base_current + outer_offset + j
                     v2 = base_next + outer_offset + j
                     v3 = base_next + outer_offset + j_next
@@ -620,7 +830,7 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
     # Add end caps for lining (close the start and end of the channel)
     # Skip end caps for cyclic curves - they form a complete loop
     if has_lining and not is_cyclic:
-        _add_lining_end_caps(faces, num_samples, total_verts_per_section, num_inner_verts, is_open_channel)
+        _add_lining_end_caps(faces, num_samples, total_verts_per_section, num_inner_verts, is_open_channel, edge_info)
 
     return vertices, faces
 
@@ -631,6 +841,7 @@ def _add_lining_end_caps(
     total_verts_per_section: int,
     num_inner_verts: int,
     is_open_channel: bool,
+    edge_info: dict,
 ) -> None:
     """Add end caps to close the lining at start and end of channel."""
     outer_offset = num_inner_verts
@@ -639,34 +850,47 @@ def _add_lining_end_caps(
     base_start = 0
 
     if is_open_channel:
-        # For open channels, cap the bottom and walls but not the top
+        bottom_start, bottom_end = edge_info["bottom"]
+        right_start, right_end = edge_info["right_wall"]
+        tl_idx = edge_info["top_left"]
+        bl_idx = 0
+        # Note: tr_idx = edge_info["top_right"], br_idx = bottom_end (unused but documented)
+
+        # For open channels with subdivision, we need to create caps that
+        # connect inner to outer at each edge
+
         # Bottom cap: connect inner bottom edge to outer bottom edge
-        faces.append(
-            (
-                base_start + 0,  # Inner BL
-                base_start + outer_offset + 0,  # Outer BL
-                base_start + outer_offset + 1,  # Outer BR
-                base_start + 1,  # Inner BR
+        # This creates a strip of quads along the bottom
+        for j in range(bottom_start, bottom_end):
+            j_next = j + 1
+            faces.append(
+                (
+                    base_start + j,  # Inner
+                    base_start + outer_offset + j,  # Outer
+                    base_start + outer_offset + j_next,  # Outer next
+                    base_start + j_next,  # Inner next
+                )
             )
-        )
 
-        # Left wall cap
-        faces.append(
-            (
-                base_start + 0,  # Inner BL
-                base_start + 3,  # Inner TL
-                base_start + outer_offset + 3,  # Outer TL
-                base_start + outer_offset + 0,  # Outer BL
+        # Right wall cap: connect inner right wall to outer right wall
+        for j in range(right_start, right_end):
+            j_next = j + 1
+            faces.append(
+                (
+                    base_start + j,  # Inner
+                    base_start + j_next,  # Inner next
+                    base_start + outer_offset + j_next,  # Outer next
+                    base_start + outer_offset + j,  # Outer
+                )
             )
-        )
 
-        # Right wall cap
+        # Left wall cap: from BL to TL
         faces.append(
             (
-                base_start + 1,  # Inner BR
-                base_start + outer_offset + 1,  # Outer BR
-                base_start + outer_offset + 2,  # Outer TR
-                base_start + 2,  # Inner TR
+                base_start + bl_idx,  # Inner BL
+                base_start + tl_idx,  # Inner TL
+                base_start + outer_offset + tl_idx,  # Outer TL
+                base_start + outer_offset + bl_idx,  # Outer BL
             )
         )
 
@@ -674,33 +898,43 @@ def _add_lining_end_caps(
     base_end = (num_samples - 1) * total_verts_per_section
 
     if is_open_channel:
-        # Bottom cap
-        faces.append(
-            (
-                base_end + 1,  # Inner BR
-                base_end + outer_offset + 1,  # Outer BR
-                base_end + outer_offset + 0,  # Outer BL
-                base_end + 0,  # Inner BL
-            )
-        )
+        bottom_start, bottom_end = edge_info["bottom"]
+        right_start, right_end = edge_info["right_wall"]
+        tl_idx = edge_info["top_left"]
+        bl_idx = 0
+        # tr_idx and br_idx are implicitly: tr_idx = edge_info["top_right"], br_idx = bottom_end
 
-        # Left wall cap
-        faces.append(
-            (
-                base_end + outer_offset + 0,  # Outer BL
-                base_end + outer_offset + 3,  # Outer TL
-                base_end + 3,  # Inner TL
-                base_end + 0,  # Inner BL
+        # Bottom cap (reversed winding)
+        for j in range(bottom_start, bottom_end):
+            j_next = j + 1
+            faces.append(
+                (
+                    base_end + j_next,  # Inner next
+                    base_end + outer_offset + j_next,  # Outer next
+                    base_end + outer_offset + j,  # Outer
+                    base_end + j,  # Inner
+                )
             )
-        )
 
-        # Right wall cap
+        # Right wall cap (reversed)
+        for j in range(right_start, right_end):
+            j_next = j + 1
+            faces.append(
+                (
+                    base_end + j,  # Inner
+                    base_end + outer_offset + j,  # Outer
+                    base_end + outer_offset + j_next,  # Outer next
+                    base_end + j_next,  # Inner next
+                )
+            )
+
+        # Left wall cap (reversed)
         faces.append(
             (
-                base_end + 2,  # Inner TR
-                base_end + outer_offset + 2,  # Outer TR
-                base_end + outer_offset + 1,  # Outer BR
-                base_end + 1,  # Inner BR
+                base_end + outer_offset + bl_idx,  # Outer BL
+                base_end + outer_offset + tl_idx,  # Outer TL
+                base_end + tl_idx,  # Inner TL
+                base_end + bl_idx,  # Inner BL
             )
         )
 

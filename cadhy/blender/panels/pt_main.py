@@ -6,6 +6,8 @@ Primary CADHY panel for channel creation and parametric editing.
 import bpy
 from bpy.types import Panel
 
+from ..operators.op_presets import draw_presets_menu
+
 
 def is_editing_channel(context):
     """Check if we're editing an existing CADHY channel."""
@@ -72,6 +74,11 @@ class CADHY_PT_Main(Panel):
         else:
             row = box.row()
             row.label(text="Select a curve as axis", icon="ERROR")
+
+        layout.separator()
+
+        # Presets
+        draw_presets_menu(layout, context)
 
         layout.separator()
 
@@ -186,6 +193,12 @@ class CADHY_PT_Main(Panel):
         col.separator()
         col.prop(source, "lining_thickness", text="Lining Thickness")
         col.prop(source, "resolution_m", text="Resolution (m)")
+
+        # Profile subdivision options
+        col.separator()
+        col.prop(source, "subdivide_profile", text="Subdivide Profile")
+        if getattr(source, "subdivide_profile", True):
+            col.prop(source, "profile_resolution", text="Profile Resolution (m)")
 
         # Calculated values for trapezoidal
         if section_type == "TRAP":

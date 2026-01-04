@@ -6,14 +6,19 @@ Includes keyboard shortcuts registration similar to major addons.
 
 import bpy
 
+from .blender.menus.pie_main import CADHY_MT_PieMenu, CADHY_OT_CallPieMenu
 from .blender.operators.op_assign_materials import CADHY_OT_AssignMaterials
 from .blender.operators.op_build_cfd_domain import CADHY_OT_BuildCFDDomain
 from .blender.operators.op_build_channel import CADHY_OT_BuildChannel
 from .blender.operators.op_dev_reload import CADHY_OT_DevReload
 from .blender.operators.op_export_cfd import CADHY_OT_ExportCFD
+from .blender.operators.op_export_cfd_template import CADHY_OT_ExportCFDTemplate
 from .blender.operators.op_export_report import CADHY_OT_ExportReport
 from .blender.operators.op_generate_sections import CADHY_OT_GenerateSections
+from .blender.operators.op_help import CADHY_OT_OpenDocs, CADHY_OT_ShowHelp, CADHY_OT_ShowKeymap
+from .blender.operators.op_presets import CADHY_OT_DeletePreset, CADHY_OT_LoadPreset, CADHY_OT_SavePreset
 from .blender.operators.op_setup_render import CADHY_OT_SetupRender
+from .blender.operators.op_setup_workspace import CADHY_OT_ResetWorkspace, CADHY_OT_SetupWorkspace
 from .blender.operators.op_station_markers import CADHY_OT_ClearStationMarkers, CADHY_OT_CreateStationMarkers
 from .blender.operators.op_update_cfd_domain import CADHY_OT_UpdateCFDDomain
 from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
@@ -55,9 +60,12 @@ classes = (
     CADHY_OT_UpdateCFDDomain,
     CADHY_OT_GenerateSections,
     CADHY_OT_ExportCFD,
+    CADHY_OT_ExportCFDTemplate,
     CADHY_OT_ExportReport,
     CADHY_OT_ValidateMesh,
     CADHY_OT_SetupRender,
+    CADHY_OT_SetupWorkspace,
+    CADHY_OT_ResetWorkspace,
     CADHY_OT_AssignMaterials,
     CADHY_OT_CreateStationMarkers,
     CADHY_OT_ClearStationMarkers,
@@ -70,6 +78,15 @@ classes = (
     CADHY_OT_ToggleShading,
     CADHY_OT_OpenLogFile,
     CADHY_OT_RefreshChannelInfo,
+    CADHY_OT_OpenDocs,
+    CADHY_OT_ShowHelp,
+    CADHY_OT_ShowKeymap,
+    CADHY_OT_SavePreset,
+    CADHY_OT_LoadPreset,
+    CADHY_OT_DeletePreset,
+    # Menus
+    CADHY_MT_PieMenu,
+    CADHY_OT_CallPieMenu,
     # Panels
     CADHY_PT_Main,
     CADHY_PT_ChannelInfo,
@@ -92,43 +109,51 @@ def register_keymaps():
     # 3D View keymap
     km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
 
-    # Ctrl+Shift+B: Build Channel
+    # Alt+Shift+B: Build Channel (avoids Ctrl+Shift+B which is Set 3D Cursor)
     kmi = km.keymap_items.new(
         "cadhy.build_channel",
         type="B",
         value="PRESS",
-        ctrl=True,
+        alt=True,
         shift=True,
     )
     addon_keymaps.append((km, kmi))
 
-    # Ctrl+Shift+U: Update Channel
+    # Alt+Shift+U: Update Channel
     kmi = km.keymap_items.new(
         "cadhy.update_channel",
         type="U",
         value="PRESS",
-        ctrl=True,
+        alt=True,
         shift=True,
     )
     addon_keymaps.append((km, kmi))
 
-    # Ctrl+Shift+D: Build CFD Domain
+    # Alt+Shift+D: Build CFD Domain (avoids Ctrl+Shift+D which is Make Links)
     kmi = km.keymap_items.new(
         "cadhy.build_cfd_domain",
         type="D",
         value="PRESS",
-        ctrl=True,
+        alt=True,
         shift=True,
     )
     addon_keymaps.append((km, kmi))
 
-    # Ctrl+Shift+S: Generate Sections
+    # Alt+Shift+S: Generate Sections (simpler than Ctrl+Shift+Alt+S)
     kmi = km.keymap_items.new(
         "cadhy.generate_sections",
         type="S",
         value="PRESS",
-        ctrl=True,
+        alt=True,
         shift=True,
+    )
+    addon_keymaps.append((km, kmi))
+
+    # Alt+C: CADHY Pie Menu (simple and memorable)
+    kmi = km.keymap_items.new(
+        "cadhy.call_pie_menu",
+        type="C",
+        value="PRESS",
         alt=True,
     )
     addon_keymaps.append((km, kmi))
@@ -173,6 +198,14 @@ def register():
     # Register keyboard shortcuts
     register_keymaps()
 
+    # Register internationalization
+    try:
+        from .i18n import register as register_i18n
+
+        register_i18n()
+    except Exception:
+        pass
+
     # Reconfigure logging from preferences (after preferences are registered)
     try:
         from .core.util.logging import reconfigure_from_preferences
@@ -186,6 +219,14 @@ def unregister():
     """Unregister all classes and remove properties."""
     # Unregister keyboard shortcuts first
     unregister_keymaps()
+
+    # Unregister internationalization
+    try:
+        from .i18n import unregister as unregister_i18n
+
+        unregister_i18n()
+    except Exception:
+        pass
 
     # Remove properties (with safety checks)
     if hasattr(bpy.types.Object, "cadhy_cfd"):

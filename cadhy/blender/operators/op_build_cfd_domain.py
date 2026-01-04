@@ -39,7 +39,7 @@ class CADHY_OT_BuildCFDDomain(Operator):
 
     bl_idname = "cadhy.build_cfd_domain"
     bl_label = "Build CFD Domain"
-    bl_description = "Generate watertight CFD fluid domain mesh (Ctrl+Shift+D)"
+    bl_description = "Generate watertight CFD fluid domain mesh (Alt+Shift+D)"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod

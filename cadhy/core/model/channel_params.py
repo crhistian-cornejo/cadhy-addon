@@ -27,6 +27,10 @@ class ChannelParams:
     lining_thickness: float = 0.15  # meters
     resolution_m: float = 1.0  # sampling resolution along axis
 
+    # Profile subdivision for uniform mesh density
+    subdivide_profile: bool = True  # Whether to subdivide profile edges
+    profile_resolution: float = 1.0  # Max edge length in profile (meters)
+
     @property
     def total_height(self) -> float:
         """Total height including freeboard."""

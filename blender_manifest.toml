@@ -1,0 +1,96 @@
+# CADHY Blender Extension Manifest
+# Required for Blender 4.2+ Extensions Platform
+# https://docs.blender.org/manual/en/latest/advanced/extensions/index.html
+
+schema_version = "1.0.0"
+
+# Unique identifier for the extension
+id = "cadhy"
+
+# Human-readable name
+name = "CADHY"
+
+# Version following semantic versioning
+version = "0.3.4"
+
+# Short description (max 64 characters)
+tagline = "Parametric hydraulic channel design and CFD domain generation"
+
+# Full description for the extensions repository
+description = """
+CADHY is a professional toolkit for parametric modeling of hydraulic infrastructure within Blender.
+
+Features:
+- Parametric channel generation from curve axis
+- Trapezoidal, rectangular, and circular cross-sections
+- CFD domain generation for computational fluid dynamics
+- OpenFOAM and ANSYS Fluent export templates
+- Station markers with engineering chainage notation
+- Mesh validation and cleanup for CFD
+- Automatic report generation
+
+Designed for civil engineers, hydraulic engineers, and CFD analysts.
+"""
+
+# Author/maintainer information
+maintainer = "CADHY Team <contact@cadhy.app>"
+
+# Extension type: add-on, theme, or keymap
+type = "add-on"
+
+# Minimum Blender version required
+blender_version_min = "4.1.0"
+
+# Maximum Blender version (optional, leave unset for no limit)
+# blender_version_max = "4.3.0"
+
+# License identifier (SPDX)
+license = ["GPL-3.0-or-later"]
+
+# Website URL
+website = "https://cadhy.app"
+
+# Documentation URL
+documentation = "https://cadhy.app/docs"
+
+# Issue tracker URL
+tracker = "https://github.com/crhistian-cornejo/cadhy-addon/issues"
+
+# Extension category for the repository
+category = "3D View"
+
+# Tags for search
+tags = ["Modeling", "Engineering", "CFD", "Hydraulics", "CAD"]
+
+# Platforms this extension supports (leave empty for all)
+# Possible values: windows-x64, macos-arm64, macos-x64, linux-x64
+platforms = []
+
+# Python dependencies (pip packages)
+# wheels = ["./wheels/numpy-1.26.0-*.whl"]
+
+# Copyright notice
+copyright = ["2024-2026 CADHY Team"]
+
+# Optional permissions
+# permissions = { files = "Read and write files for export", network = "Check for updates" }
+
+# Build settings (for blender_extension_build)
+[build]
+# Files/folders to exclude from the package
+exclude = [
+    "*.pyc",
+    "__pycache__/",
+    ".git/",
+    ".gitignore",
+    ".github/",
+    "*.md",
+    "tests/",
+    "docs/",
+    ".ruff_cache/",
+    ".mypy_cache/",
+    "opencode.json",
+]
+
+# Main package path (optional, defaults to finding __init__.py)
+# paths_exclude_pattern = ["tests/*"]
