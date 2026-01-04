@@ -104,9 +104,6 @@ class CADHY_PT_ChannelInfo(Panel):
     def poll(cls, context):
         return is_cadhy_channel(context.active_object)
 
-    def draw_header(self, context):
-        self.layout.label(text="", icon="INFO")
-
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
@@ -115,6 +112,10 @@ class CADHY_PT_ChannelInfo(Panel):
         # Refresh button
         row = layout.row(align=True)
         row.operator("cadhy.refresh_channel_info", icon="FILE_REFRESH")
+
+        # Export to Excel button
+        row = layout.row(align=True)
+        row.operator("cadhy.export_channel_excel", text="Export to Excel", icon="FILE")
 
         layout.separator()
 

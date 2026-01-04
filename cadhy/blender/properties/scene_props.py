@@ -275,6 +275,101 @@ class CADHYSceneSettings(PropertyGroup):
         subtype="DISTANCE",
     )
 
+    # CFD Mesh Settings
+    cfd_mesh_type: EnumProperty(
+        name="Mesh Type",
+        description="Type of mesh elements for CFD domain",
+        items=[
+            ("TRI", "Triangular", "Triangular elements (universal compatibility)"),
+            ("QUAD", "Quadrilateral", "Quadrilateral elements (structured mesh)"),
+        ],
+        default="TRI",
+    )
+
+    cfd_mesh_size: FloatProperty(
+        name="Mesh Size",
+        description="Target element size for CFD mesh",
+        default=0.5,
+        min=0.01,
+        max=10.0,
+        unit="LENGTH",
+        subtype="DISTANCE",
+    )
+
+    cfd_mesh_preview: BoolProperty(
+        name="Preview Mesh",
+        description="Show mesh wireframe preview on CFD domain",
+        default=False,
+    )
+
+    # Boundary Conditions
+    bc_inlet_type: EnumProperty(
+        name="Inlet BC",
+        description="Boundary condition type for inlet",
+        items=[
+            ("VELOCITY", "Velocity Inlet", "Fixed velocity at inlet"),
+            ("MASS_FLOW", "Mass Flow", "Fixed mass flow rate"),
+            ("PRESSURE", "Pressure Inlet", "Fixed pressure at inlet"),
+        ],
+        default="VELOCITY",
+    )
+
+    bc_inlet_velocity: FloatProperty(
+        name="Inlet Velocity",
+        description="Inlet velocity (m/s)",
+        default=1.0,
+        min=0.0,
+        max=50.0,
+    )
+
+    bc_outlet_type: EnumProperty(
+        name="Outlet BC",
+        description="Boundary condition type for outlet",
+        items=[
+            ("PRESSURE", "Pressure Outlet", "Fixed pressure at outlet"),
+            ("OUTFLOW", "Outflow", "Zero gradient outflow"),
+        ],
+        default="PRESSURE",
+    )
+
+    bc_outlet_pressure: FloatProperty(
+        name="Outlet Pressure",
+        description="Outlet pressure (Pa gauge)",
+        default=0.0,
+        min=-100000.0,
+        max=1000000.0,
+    )
+
+    bc_wall_type: EnumProperty(
+        name="Wall BC",
+        description="Boundary condition type for walls",
+        items=[
+            ("NO_SLIP", "No Slip", "Zero velocity at wall"),
+            ("SLIP", "Slip", "Free slip wall"),
+            ("ROUGH", "Rough Wall", "Wall with roughness"),
+        ],
+        default="NO_SLIP",
+    )
+
+    bc_wall_roughness: FloatProperty(
+        name="Wall Roughness",
+        description="Wall roughness height (m)",
+        default=0.001,
+        min=0.0,
+        max=0.1,
+    )
+
+    bc_top_type: EnumProperty(
+        name="Top BC",
+        description="Boundary condition type for top surface (free surface)",
+        items=[
+            ("SYMMETRY", "Symmetry", "Symmetry plane (rigid lid)"),
+            ("PRESSURE", "Pressure", "Atmospheric pressure"),
+            ("VOF", "VOF Interface", "Volume of Fluid interface (multiphase)"),
+        ],
+        default="SYMMETRY",
+    )
+
     # Export settings
     export_format: EnumProperty(
         name="Export Format",
@@ -289,4 +384,53 @@ class CADHYSceneSettings(PropertyGroup):
 
     export_path: StringProperty(
         name="Export Path", description="Directory for exported files", default="//cadhy_export/", subtype="DIR_PATH"
+    )
+
+    # Panel UI State (collapsible sections)
+    ui_show_axis: BoolProperty(
+        name="Show Axis Section",
+        description="Expand axis selection section",
+        default=True,
+    )
+
+    ui_show_section_params: BoolProperty(
+        name="Show Section Parameters",
+        description="Expand section parameters",
+        default=True,
+    )
+
+    ui_show_cfd: BoolProperty(
+        name="Show CFD Section",
+        description="Expand CFD domain section",
+        default=True,
+    )
+
+    ui_show_mesh_quality: BoolProperty(
+        name="Show Mesh Quality",
+        description="Expand mesh quality section",
+        default=False,
+    )
+
+    ui_show_sections: BoolProperty(
+        name="Show Cross-Sections",
+        description="Expand cross-sections section",
+        default=False,
+    )
+
+    ui_show_export: BoolProperty(
+        name="Show Export",
+        description="Expand export section",
+        default=False,
+    )
+
+    ui_show_render: BoolProperty(
+        name="Show Render",
+        description="Expand render section",
+        default=False,
+    )
+
+    ui_show_channel_info: BoolProperty(
+        name="Show Channel Info",
+        description="Expand channel info section",
+        default=False,
     )

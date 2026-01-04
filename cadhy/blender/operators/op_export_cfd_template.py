@@ -13,8 +13,7 @@ from ...core.geom.mesh_cleanup import cleanup_mesh_for_cfd
 from ...core.io.cfd_templates import (
     CFDSolver,
     create_openfoam_structure,
-    generate_blockmesh_dict,
-    generate_openfoam_mesh_dict,
+    export_openfoam_case,
     get_template,
     get_template_list,
 )
@@ -113,12 +112,10 @@ class CADHY_OT_ExportCFDTemplate(Operator):
 
             # Get patch information from CFD object
             patch_files = []
-            patch_info = {}
 
             if template.split_patches and hasattr(obj, "cadhy_cfd"):
                 # Export each patch as separate file
                 patch_files = self._export_patches(obj, stl_dir, template)
-                patch_info = self._get_patch_types(obj)
             else:
                 # Single file export
                 format_map = {
@@ -136,20 +133,31 @@ class CADHY_OT_ExportCFDTemplate(Operator):
                     self.report({"ERROR"}, "Failed to export mesh")
                     return {"CANCELLED"}
 
-            # Generate OpenFOAM dictionaries
+            # Generate OpenFOAM case with boundary conditions
             if self.generate_mesh_dicts and template.solver == CFDSolver.OPENFOAM and paths:
                 # Get bounding box
                 bbox = self._get_world_bbox(obj)
 
-                # Generate blockMeshDict
-                blockmesh_path = os.path.join(paths["system"], "blockMeshDict")
-                generate_blockmesh_dict(bbox, self.cell_size, blockmesh_path)
+                # Get boundary conditions from scene settings
+                settings = context.scene.cadhy
+                patches = self._get_bc_patches(settings)
 
-                # Generate snappyHexMeshDict
-                snappy_path = os.path.join(paths["system"], "snappyHexMeshDict")
-                generate_openfoam_mesh_dict(patch_files, patch_info, snappy_path)
+                # Export complete OpenFOAM case
+                generated = export_openfoam_case(
+                    export_dir=output_dir,
+                    case_name=obj.name,
+                    stl_files=patch_files,
+                    patches=patches,
+                    bbox=bbox,
+                    cell_size=self.cell_size,
+                    nu=1e-6,  # Water kinematic viscosity
+                    turbulence_model="kOmegaSST",
+                )
 
-                logger.set_success(f"Exported to {paths['case']} with OpenFOAM config files")
+                logger.set_success(
+                    f"Exported OpenFOAM case to {paths['case']} with "
+                    f"{len(generated)} config files including BC"
+                )
             else:
                 logger.set_success(f"Exported {len(patch_files)} files to {output_dir}")
 
@@ -313,6 +321,58 @@ class CADHY_OT_ExportCFDTemplate(Operator):
                 patch_info[name] = "wall"
 
         return patch_info
+
+    def _get_bc_patches(self, settings):
+        """Get boundary condition patches from scene settings."""
+        patches = {}
+
+        # Map scene BC settings to patch dictionary format
+        # Inlet BC
+        bc_inlet_map = {
+            "VELOCITY": "velocity",
+            "MASS_FLOW": "mass_flow",
+            "PRESSURE": "pressure",
+        }
+        patches["inlet"] = {
+            "type": bc_inlet_map.get(settings.bc_inlet_type, "velocity"),
+            "velocity": settings.bc_inlet_velocity,
+        }
+
+        # Outlet BC
+        bc_outlet_map = {
+            "PRESSURE": "pressure",
+            "OUTFLOW": "outflow",
+        }
+        patches["outlet"] = {
+            "type": bc_outlet_map.get(settings.bc_outlet_type, "pressure"),
+            "pressure": settings.bc_outlet_pressure,
+        }
+
+        # Wall BC
+        bc_wall_map = {
+            "NO_SLIP": "no_slip",
+            "SLIP": "slip",
+            "ROUGH": "rough",
+        }
+        patches["walls"] = {
+            "type": bc_wall_map.get(settings.bc_wall_type, "no_slip"),
+            "roughness": settings.bc_wall_roughness,
+        }
+
+        # Bottom (same as walls for channel)
+        patches["bottom"] = patches["walls"].copy()
+
+        # Top BC
+        bc_top_map = {
+            "SYMMETRY": "symmetry",
+            "PRESSURE": "pressure",
+            "VOF": "symmetry",  # VOF handled differently in full case
+        }
+        patches["top"] = {
+            "type": bc_top_map.get(settings.bc_top_type, "symmetry"),
+        }
+
+        return patches
 
     def _get_world_bbox(self, obj):
         """Get world-space bounding box."""

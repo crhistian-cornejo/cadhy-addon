@@ -8,6 +8,65 @@ from bpy.props import EnumProperty
 from bpy.types import Menu, Operator
 
 
+class CADHY_MT_CFDMeshSubmenu(Menu):
+    """CFD Mesh type submenu"""
+
+    bl_idname = "CADHY_MT_cfd_mesh_submenu"
+    bl_label = "CFD Mesh"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.cadhy
+
+        # Current mesh type indicator
+        current = "TRI" if settings.cfd_mesh_type == "TRI" else "QUAD"
+        layout.label(text=f"Current: {current}", icon="MESH_GRID")
+        layout.separator()
+
+        # Mesh type options
+        layout.label(text="Mesh Type:", icon="MOD_TRIANGULATE")
+        tri_icon = "CHECKMARK" if settings.cfd_mesh_type == "TRI" else "BLANK1"
+        op = layout.operator("cadhy.set_mesh_type", text="Triangular", icon=tri_icon)
+        op.mesh_type = "TRI"
+        quad_icon = "CHECKMARK" if settings.cfd_mesh_type == "QUAD" else "BLANK1"
+        op = layout.operator("cadhy.set_mesh_type", text="Quadrilateral", icon=quad_icon)
+        op.mesh_type = "QUAD"
+
+        layout.separator()
+
+        # Mesh quality analysis
+        layout.label(text="Quality:", icon="VIEWZOOM")
+        layout.operator("cadhy.analyze_mesh_quality", text="Analyze Mesh", icon="VIEWZOOM")
+        layout.operator("cadhy.validate_mesh", text="Validate Mesh", icon="CHECKMARK")
+
+
+class CADHY_OT_SetMeshType(Operator):
+    """Set CFD mesh type"""
+
+    bl_idname = "cadhy.set_mesh_type"
+    bl_label = "Set Mesh Type"
+    bl_description = "Set the CFD mesh element type"
+    bl_options = {"REGISTER", "UNDO"}
+
+    mesh_type: EnumProperty(
+        name="Mesh Type",
+        items=[
+            ("TRI", "Triangular", "Triangular elements"),
+            ("QUAD", "Quadrilateral", "Quadrilateral elements"),
+        ],
+        default="TRI",
+    )
+
+    def execute(self, context):
+        settings = context.scene.cadhy
+        settings.cfd_mesh_type = self.mesh_type
+
+        type_name = "Triangular" if self.mesh_type == "TRI" else "Quadrilateral"
+        self.report({"INFO"}, f"CFD mesh type set to: {type_name}")
+
+        return {"FINISHED"}
+
+
 class CADHY_MT_ExportSubmenu(Menu):
     """Export format submenu"""
 
@@ -213,8 +272,8 @@ class CADHY_MT_PieMenu(Menu):
         # NORTHWEST (Top-Left) - Station Markers
         pie.operator("cadhy.create_station_markers", text="Markers", icon="FONT_DATA")
 
-        # NORTHEAST (Top-Right) - Validate Mesh
-        pie.operator("cadhy.validate_mesh", text="Validate", icon="CHECKMARK")
+        # NORTHEAST (Top-Right) - CFD Mesh submenu (TRI/QUAD selection)
+        pie.menu("CADHY_MT_cfd_mesh_submenu", text="Mesh", icon="MESH_GRID")
 
         # SOUTHWEST (Bottom-Left) - CFD Template
         pie.operator("cadhy.export_cfd_template", text="CFD Setup", icon="SETTINGS")

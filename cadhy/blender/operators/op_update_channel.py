@@ -98,20 +98,84 @@ class CADHY_OT_UpdateChannel(Operator):
 
     def _update_linked_cfd_domains(self, channel_obj, context):
         """Update all CFD domains linked to this channel."""
+        from ...core.geom.build_cfd_domain import build_cfd_domain_mesh, update_cfd_domain_geometry
+        from ...core.geom.mesh_validate import get_cfd_domain_info
+        from ...core.model.cfd_params import CFDParams, FillMode
+        from ...core.model.channel_params import ChannelParams, SectionType
+
         updated_count = 0
+        ch = channel_obj.cadhy_channel
+
+        # Section type mapping
+        section_type_map = {
+            "TRAP": SectionType.TRAPEZOIDAL,
+            "RECT": SectionType.RECTANGULAR,
+            "CIRC": SectionType.CIRCULAR,
+            "TRI": SectionType.TRIANGULAR,
+            "PIPE": SectionType.PIPE,
+        }
+
         for obj in bpy.data.objects:
-            if obj.type == "MESH":
-                cfd = getattr(obj, "cadhy_cfd", None)
-                if cfd and cfd.is_cadhy_object and cfd.source_channel == channel_obj:
-                    # Update this CFD domain
-                    original_active = context.view_layer.objects.active
-                    context.view_layer.objects.active = obj
-                    try:
-                        bpy.ops.cadhy.update_cfd_domain()
-                        updated_count += 1
-                    except Exception:
-                        pass  # Skip if update fails
-                    context.view_layer.objects.active = original_active
+            if obj.type != "MESH":
+                continue
+
+            cfd = getattr(obj, "cadhy_cfd", None)
+            if not cfd or not cfd.is_cadhy_object or cfd.source_channel != channel_obj:
+                continue
+
+            # Update CFD domain directly without operators (avoids ViewLayer issues)
+            try:
+                # Build channel params from linked channel
+                channel_params = ChannelParams(
+                    section_type=section_type_map.get(ch.section_type, SectionType.TRAPEZOIDAL),
+                    bottom_width=ch.bottom_width,
+                    side_slope=ch.side_slope,
+                    height=ch.height,
+                    freeboard=ch.freeboard,
+                    lining_thickness=ch.lining_thickness,
+                    resolution_m=ch.resolution_m,
+                )
+
+                # Get CFD parameters from stored settings
+                fill_mode_map = {
+                    "WATER_LEVEL": FillMode.WATER_LEVEL,
+                    "FULL": FillMode.FULL,
+                }
+
+                cfd_params = CFDParams(
+                    enabled=True,
+                    inlet_extension_m=cfd.inlet_extension_m,
+                    outlet_extension_m=cfd.outlet_extension_m,
+                    water_level_m=cfd.water_level_m,
+                    fill_mode=fill_mode_map.get(cfd.fill_mode, FillMode.WATER_LEVEL),
+                    cap_inlet=cfd.cap_inlet,
+                    cap_outlet=cfd.cap_outlet,
+                )
+
+                # Get mesh type (with backward compatibility)
+                mesh_type = getattr(cfd, "mesh_type", "QUAD")
+
+                # Build new geometry
+                vertices, faces, patch_faces = build_cfd_domain_mesh(
+                    cfd.source_axis, channel_params, cfd_params, mesh_type=mesh_type
+                )
+
+                if vertices and faces:
+                    # Update mesh in place
+                    update_cfd_domain_geometry(obj, vertices, faces, patch_faces)
+
+                    # Re-validate
+                    cfd_info = get_cfd_domain_info(obj, patch_faces)
+                    cfd.is_watertight = cfd_info.is_watertight
+                    cfd.is_valid = cfd_info.is_valid
+                    cfd.non_manifold_edges = cfd_info.non_manifold_edges
+                    cfd.volume = cfd_info.volume
+
+                    updated_count += 1
+
+            except Exception as e:
+                # Log but don't fail the channel update
+                print(f"[CADHY] Failed to update CFD domain '{obj.name}': {e}")
 
         if updated_count > 0:
             self.report({"INFO"}, f"Also updated {updated_count} linked CFD domain(s)")

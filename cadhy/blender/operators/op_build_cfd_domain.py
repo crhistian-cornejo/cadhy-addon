@@ -127,9 +127,12 @@ class CADHY_OT_BuildCFDDomain(Operator):
                     cap_outlet=True,
                 )
 
-                # Build CFD domain mesh
+                # Build CFD domain mesh with mesh type
                 wm.progress_update(40)
-                vertices, faces, patch_faces = build_cfd_domain_mesh(axis_obj, channel_params, cfd_params)
+                mesh_type = settings.cfd_mesh_type  # "TRI" or "QUAD"
+                vertices, faces, patch_faces = build_cfd_domain_mesh(
+                    axis_obj, channel_params, cfd_params, mesh_type=mesh_type
+                )
 
                 if not vertices or not faces:
                     wm.progress_end()
@@ -163,6 +166,19 @@ class CADHY_OT_BuildCFDDomain(Operator):
                 cfd_settings.volume = cfd_info.volume
                 cfd_settings.cadhy_version = CADHY_VERSION_STRING
                 cfd_settings.is_cadhy_object = True
+
+                # Store mesh settings
+                cfd_settings.mesh_type = mesh_type
+                cfd_settings.mesh_size = settings.cfd_mesh_size
+
+                # Store boundary conditions from scene settings
+                cfd_settings.bc_inlet_type = settings.bc_inlet_type
+                cfd_settings.bc_inlet_velocity = settings.bc_inlet_velocity
+                cfd_settings.bc_outlet_type = settings.bc_outlet_type
+                cfd_settings.bc_outlet_pressure = settings.bc_outlet_pressure
+                cfd_settings.bc_wall_type = settings.bc_wall_type
+                cfd_settings.bc_wall_roughness = settings.bc_wall_roughness
+                cfd_settings.bc_top_type = settings.bc_top_type
 
                 # Select the created object (using direct API, not operators)
                 wm.progress_update(95)

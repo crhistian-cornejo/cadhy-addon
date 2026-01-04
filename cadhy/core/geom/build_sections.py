@@ -4,7 +4,6 @@ Generate cross-section cuts along the channel axis.
 """
 
 import math
-from typing import List
 
 from ..model.channel_params import ChannelParams
 from ..model.sections_params import SectionCut, SectionsParams, SectionsReport
@@ -114,7 +113,7 @@ def generate_sections(
     return report
 
 
-def create_section_curves(report: SectionsReport, collection_name: str = "CADHY_Sections") -> List["bpy.types.Object"]:
+def create_section_curves(report: SectionsReport, collection_name: str = "CADHY_Sections") -> list:
     """
     Create Blender curve objects for each section.
 
@@ -172,7 +171,7 @@ def create_section_curves(report: SectionsReport, collection_name: str = "CADHY_
     return created_objects
 
 
-def create_section_meshes(report: SectionsReport, collection_name: str = "CADHY_Sections") -> List["bpy.types.Object"]:
+def create_section_meshes(report: SectionsReport, collection_name: str = "CADHY_Sections") -> list:
     """
     Create Blender mesh objects (filled polygons) for each section.
 

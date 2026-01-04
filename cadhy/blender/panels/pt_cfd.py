@@ -116,3 +116,51 @@ class CADHY_PT_CFD(Panel):
         row = box.row()
         row.enabled = cfd_domain_exists or (obj and obj.type == "MESH")
         row.operator("cadhy.validate_mesh", text="Validate Mesh", icon="VIEWZOOM")
+
+        layout.separator()
+
+        # Mesh Settings
+        mesh_box = layout.box()
+        mesh_box.label(text="Mesh Settings", icon="MESH_GRID")
+        col = mesh_box.column(align=True)
+        col.prop(settings, "cfd_mesh_type", text="Type")
+        col.prop(settings, "cfd_mesh_size", text="Element Size")
+        col.prop(settings, "cfd_mesh_preview", text="Preview Wireframe")
+
+        layout.separator()
+
+        # Boundary Conditions
+        bc_box = layout.box()
+        bc_box.label(text="Boundary Conditions", icon="OUTLINER_DATA_MESH")
+
+        # Inlet
+        col = bc_box.column(align=True)
+        col.label(text="Inlet:", icon="FORWARD")
+        col.prop(settings, "bc_inlet_type", text="")
+        if settings.bc_inlet_type == "VELOCITY":
+            col.prop(settings, "bc_inlet_velocity", text="Velocity (m/s)")
+
+        bc_box.separator()
+
+        # Outlet
+        col = bc_box.column(align=True)
+        col.label(text="Outlet:", icon="BACK")
+        col.prop(settings, "bc_outlet_type", text="")
+        if settings.bc_outlet_type == "PRESSURE":
+            col.prop(settings, "bc_outlet_pressure", text="Pressure (Pa)")
+
+        bc_box.separator()
+
+        # Walls
+        col = bc_box.column(align=True)
+        col.label(text="Walls:", icon="MESH_PLANE")
+        col.prop(settings, "bc_wall_type", text="")
+        if settings.bc_wall_type == "ROUGH":
+            col.prop(settings, "bc_wall_roughness", text="Roughness (m)")
+
+        bc_box.separator()
+
+        # Top Surface
+        col = bc_box.column(align=True)
+        col.label(text="Top Surface:", icon="TRIA_UP")
+        col.prop(settings, "bc_top_type", text="")

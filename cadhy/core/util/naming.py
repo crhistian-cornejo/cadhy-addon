@@ -127,7 +127,7 @@ def parse_cadhy_name(name: str) -> dict:
     return result
 
 
-def ensure_collection(collection_name: str) -> "bpy.types.Collection":
+def ensure_collection(collection_name: str):
     """
     Get or create a collection by name.
 

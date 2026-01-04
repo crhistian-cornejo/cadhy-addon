@@ -14,6 +14,57 @@ from ..model.channel_params import ChannelParams, SectionType
 from .build_channel import _is_curve_cyclic, sample_curve_points
 
 
+def triangulate_quad_faces(
+    faces: List[Tuple[int, ...]], patch_faces: Dict[str, List[int]]
+) -> Tuple[List[Tuple[int, int, int]], Dict[str, List[int]]]:
+    """
+    Convert quad faces to triangles.
+
+    Args:
+        faces: List of quad faces (4 vertices each)
+        patch_faces: Dictionary mapping patch names to face indices
+
+    Returns:
+        Tuple of (triangulated faces, updated patch_faces)
+    """
+    tri_faces = []
+    new_patch_faces = {key: [] for key in patch_faces.keys()}
+
+    # Create reverse lookup: face_idx -> patch_name
+    face_to_patch = {}
+    for patch_name, indices in patch_faces.items():
+        for idx in indices:
+            face_to_patch[idx] = patch_name
+
+    for i, face in enumerate(faces):
+        if len(face) == 4:
+            # Split quad into two triangles
+            v0, v1, v2, v3 = face
+            tri_faces.append((v0, v1, v2))
+            tri_faces.append((v0, v2, v3))
+
+            # Assign both triangles to same patch
+            patch_name = face_to_patch.get(i)
+            if patch_name:
+                new_patch_faces[patch_name].append(len(tri_faces) - 2)
+                new_patch_faces[patch_name].append(len(tri_faces) - 1)
+        elif len(face) == 3:
+            # Already a triangle
+            tri_faces.append(face)
+            patch_name = face_to_patch.get(i)
+            if patch_name:
+                new_patch_faces[patch_name].append(len(tri_faces) - 1)
+        else:
+            # Other polygons: triangulate as fan
+            for j in range(1, len(face) - 1):
+                tri_faces.append((face[0], face[j], face[j + 1]))
+                patch_name = face_to_patch.get(i)
+                if patch_name:
+                    new_patch_faces[patch_name].append(len(tri_faces) - 1)
+
+    return tri_faces, new_patch_faces
+
+
 def generate_cfd_section_vertices(channel_params: ChannelParams) -> List[Tuple[float, float]]:
     """
     Generate 2D section vertices for CFD domain (full fluid volume).
@@ -93,7 +144,10 @@ def generate_cfd_section_vertices(channel_params: ChannelParams) -> List[Tuple[f
 
 
 def build_cfd_domain_mesh(
-    curve_obj, channel_params: ChannelParams, cfd_params=None
+    curve_obj,
+    channel_params: ChannelParams,
+    cfd_params=None,
+    mesh_type: str = "QUAD",
 ) -> Tuple[List[Vector], List[Tuple[int, ...]], Dict[str, List[int]]]:
     """
     Build CFD domain mesh geometry following exactly the channel axis.
@@ -103,6 +157,7 @@ def build_cfd_domain_mesh(
         curve_obj: Blender curve object (axis)
         channel_params: Channel parameters
         cfd_params: Deprecated, kept for compatibility but ignored
+        mesh_type: "TRI" for triangular or "QUAD" for quadrilateral elements
 
     Returns:
         Tuple of (vertices, faces, patch_face_indices)
@@ -210,6 +265,10 @@ def build_cfd_domain_mesh(
             patch_faces[PatchType.OUTLET.value].append(face_idx)
             face_idx += 1
 
+    # Apply triangulation if requested
+    if mesh_type == "TRI":
+        faces, patch_faces = triangulate_quad_faces(faces, patch_faces)
+
     return vertices, faces, patch_faces
 
 
@@ -219,7 +278,7 @@ def create_cfd_domain_object(
     faces: List[Tuple[int, ...]],
     patch_faces: Dict[str, List[int]],
     collection_name: str = "CADHY_CFD",
-) -> "bpy.types.Object":
+):
     """
     Create CFD domain object with material slots for patches.
 

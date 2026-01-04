@@ -241,3 +241,91 @@ class CADHYCFDSettings(PropertyGroup):
     is_cadhy_object: BoolProperty(
         name="Is CADHY Object", description="Whether this object was created by CADHY", default=True
     )
+
+    # Mesh type
+    mesh_type: EnumProperty(
+        name="Mesh Type",
+        description="Type of mesh elements",
+        items=[
+            ("TRI", "Triangular", "Triangular elements"),
+            ("QUAD", "Quadrilateral", "Quadrilateral elements"),
+        ],
+        default="TRI",
+    )
+
+    mesh_size: FloatProperty(
+        name="Mesh Size",
+        description="Target element size",
+        default=0.5,
+        min=0.01,
+        max=10.0,
+        unit="LENGTH",
+    )
+
+    # Boundary Conditions (stored for export)
+    bc_inlet_type: EnumProperty(
+        name="Inlet BC",
+        description="Boundary condition type for inlet",
+        items=[
+            ("VELOCITY", "Velocity Inlet", "Fixed velocity at inlet"),
+            ("MASS_FLOW", "Mass Flow", "Fixed mass flow rate"),
+            ("PRESSURE", "Pressure Inlet", "Fixed pressure at inlet"),
+        ],
+        default="VELOCITY",
+    )
+
+    bc_inlet_velocity: FloatProperty(
+        name="Inlet Velocity",
+        description="Inlet velocity (m/s)",
+        default=1.0,
+        min=0.0,
+        max=50.0,
+    )
+
+    bc_outlet_type: EnumProperty(
+        name="Outlet BC",
+        description="Boundary condition type for outlet",
+        items=[
+            ("PRESSURE", "Pressure Outlet", "Fixed pressure at outlet"),
+            ("OUTFLOW", "Outflow", "Zero gradient outflow"),
+        ],
+        default="PRESSURE",
+    )
+
+    bc_outlet_pressure: FloatProperty(
+        name="Outlet Pressure",
+        description="Outlet pressure (Pa gauge)",
+        default=0.0,
+        min=-100000.0,
+        max=1000000.0,
+    )
+
+    bc_wall_type: EnumProperty(
+        name="Wall BC",
+        description="Boundary condition type for walls",
+        items=[
+            ("NO_SLIP", "No Slip", "Zero velocity at wall"),
+            ("SLIP", "Slip", "Free slip wall"),
+            ("ROUGH", "Rough Wall", "Wall with roughness"),
+        ],
+        default="NO_SLIP",
+    )
+
+    bc_wall_roughness: FloatProperty(
+        name="Wall Roughness",
+        description="Wall roughness height (m)",
+        default=0.001,
+        min=0.0,
+        max=0.1,
+    )
+
+    bc_top_type: EnumProperty(
+        name="Top BC",
+        description="Boundary condition type for top surface",
+        items=[
+            ("SYMMETRY", "Symmetry", "Symmetry plane (rigid lid)"),
+            ("PRESSURE", "Pressure", "Atmospheric pressure"),
+            ("VOF", "VOF Interface", "Volume of Fluid interface"),
+        ],
+        default="SYMMETRY",
+    )

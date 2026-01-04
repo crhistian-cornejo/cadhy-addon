@@ -5,6 +5,63 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.7] - 2026-01-03
+
+### Added
+
+- **Unified Panel with Collapsible Sections**: Consolidated all panels into one
+  - Single CADHY panel replaces 7 separate panels
+  - Collapsible sections: Axis, Section Parameters, CFD, Mesh Quality, Sections, Export, Render, Channel Info
+  - Cleaner UI with triangle icons for expand/collapse
+  - Panel state preserved across sessions
+
+- **CFD Mesh Type Selection in Pie Menu**: Quick TRI/QUAD toggle
+  - New "Mesh" submenu in Alt+C pie menu (Northeast position)
+  - Shows current mesh type with checkmark
+  - Includes Analyze Mesh and Validate Mesh shortcuts
+
+- **Complete OpenFOAM Case Export**: Full simulation-ready case generation
+  - Generates 0/U (velocity) and 0/p (pressure) boundary condition files
+  - Generates system/controlDict, fvSchemes, fvSolution
+  - Generates constant/transportProperties, turbulenceProperties
+  - Boundary conditions from panel settings (inlet velocity, outlet pressure, wall types)
+  - Support for kOmegaSST turbulence model
+  - Complete case structure ready for `blockMesh` and `simpleFoam`
+
+- **Mesh Quality Analysis Panel Section**: CFD mesh quality metrics
+  - Skewness, aspect ratio, non-orthogonality calculations
+  - Quality rating: Excellent, Good, Fair, Poor
+  - Face type counts (triangles, quads, ngons)
+  - OpenFOAM-compatible quality thresholds
+
+- **Curve Radius Validation**: Check channel geometry feasibility
+  - Validates curve radius vs channel half-width
+  - Warns when inner geometry may self-intersect
+
+- **Excel Report Export**: Spreadsheet export for project data
+  - Channel parameters, sections, hydraulic calculations
+  - Requires openpyxl (optional dependency)
+
+### Changed
+
+- **Panel Organization**: Removed individual panels, all in unified panel
+  - pt_main.py, pt_cfd.py, pt_sections.py, pt_export.py, pt_render.py, pt_channel_info.py consolidated
+  - Mesh quality panel converted to operator-only module
+
+- **CFD Domain Properties**: Extended object properties for mesh type storage
+  - Stores TRI/QUAD mesh type preference on CFD domain objects
+  - Mesh type persists across updates
+
+### Technical
+
+- New `pt_unified.py` with CADHY_PT_Unified panel class
+- New `pt_mesh_quality.py` with shared cache functions
+- Extended `cfd_templates.py` with 8 new OpenFOAM file generators
+- Added UI state properties to scene_props.py for panel sections
+- New CADHY_MT_CFDMeshSubmenu and CADHY_OT_SetMeshType in pie_main.py
+
+---
+
 ## [0.3.6] - 2026-01-03
 
 ### Added

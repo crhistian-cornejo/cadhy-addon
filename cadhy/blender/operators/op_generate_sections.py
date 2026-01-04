@@ -103,9 +103,9 @@ class CADHY_OT_GenerateSections(Operator):
             # Store report in scene for export
             context.scene["cadhy_sections_report"] = report.to_dict()
 
-            logger.set_success(
-                f"Generated {len(created)} sections from {report.sections[0].station:.1f}m to {report.sections[-1].station:.1f}m"
-            )
+            start_st = report.sections[0].station
+            end_st = report.sections[-1].station
+            logger.set_success(f"Generated {len(created)} sections from {start_st:.1f}m to {end_st:.1f}m")
 
         return {"FINISHED"}
 

@@ -1131,7 +1131,7 @@ def _add_lining_end_caps(
 
 def create_channel_object(
     name: str, vertices: List[Vector], faces: List[Tuple[int, ...]], collection_name: str = "CADHY_Channels"
-) -> "bpy.types.Object":
+):
     """
     Create or update a Blender mesh object from vertices and faces.
 

@@ -7,11 +7,13 @@ Includes keyboard shortcuts registration similar to major addons.
 import bpy
 
 from .blender.menus.pie_main import (
+    CADHY_MT_CFDMeshSubmenu,
     CADHY_MT_ExportSubmenu,
     CADHY_MT_PieMenu,
     CADHY_OT_CallPieMenu,
     CADHY_OT_QuickExportCFD,
     CADHY_OT_QuickExportReport,
+    CADHY_OT_SetMeshType,
 )
 from .blender.operators.op_assign_materials import CADHY_OT_AssignMaterials
 from .blender.operators.op_build_cfd_domain import CADHY_OT_BuildCFDDomain
@@ -19,6 +21,7 @@ from .blender.operators.op_build_channel import CADHY_OT_BuildChannel
 from .blender.operators.op_dev_reload import CADHY_OT_DevReload
 from .blender.operators.op_export_cfd import CADHY_OT_ExportCFD
 from .blender.operators.op_export_cfd_template import CADHY_OT_ExportCFDTemplate
+from .blender.operators.op_export_excel import CADHY_OT_ExportChannelExcel
 from .blender.operators.op_export_pdf_report import CADHY_OT_ExportPDFReport
 from .blender.operators.op_export_report import CADHY_OT_ExportReport
 from .blender.operators.op_generate_sections import CADHY_OT_GenerateSections
@@ -30,12 +33,15 @@ from .blender.operators.op_station_markers import CADHY_OT_ClearStationMarkers, 
 from .blender.operators.op_update_cfd_domain import CADHY_OT_UpdateCFDDomain
 from .blender.operators.op_update_channel import CADHY_OT_UpdateChannel
 from .blender.operators.op_validate_mesh import CADHY_OT_ValidateMesh
-from .blender.panels.pt_cfd import CADHY_PT_CFD
-from .blender.panels.pt_channel_info import CADHY_OT_RefreshChannelInfo, CADHY_PT_ChannelInfo
-from .blender.panels.pt_export import CADHY_OT_ExportAll, CADHY_PT_Export
-from .blender.panels.pt_main import CADHY_PT_Main
-from .blender.panels.pt_render import CADHY_OT_ToggleShading, CADHY_PT_Render
-from .blender.panels.pt_sections import CADHY_PT_Sections
+
+# Keep operators from old panels
+from .blender.panels.pt_channel_info import CADHY_OT_RefreshChannelInfo
+from .blender.panels.pt_export import CADHY_OT_ExportAll
+from .blender.panels.pt_mesh_quality import CADHY_OT_AnalyzeMeshQuality
+from .blender.panels.pt_render import CADHY_OT_ToggleShading
+
+# Unified Panel (consolidates Main, CFD, Sections, Export, Render, MeshQuality, ChannelInfo)
+from .blender.panels.pt_unified import CADHY_PT_Unified
 from .blender.panels.pt_updates import (
     CADHY_OT_CheckUpdates,
     CADHY_OT_DownloadUpdate,
@@ -68,6 +74,7 @@ classes = (
     CADHY_OT_GenerateSections,
     CADHY_OT_ExportCFD,
     CADHY_OT_ExportCFDTemplate,
+    CADHY_OT_ExportChannelExcel,
     CADHY_OT_ExportPDFReport,
     CADHY_OT_ExportReport,
     CADHY_OT_ValidateMesh,
@@ -92,20 +99,18 @@ classes = (
     CADHY_OT_SavePreset,
     CADHY_OT_LoadPreset,
     CADHY_OT_DeletePreset,
+    CADHY_OT_AnalyzeMeshQuality,
+    CADHY_OT_SetMeshType,
     # Menus and quick operators
+    CADHY_MT_CFDMeshSubmenu,
     CADHY_MT_ExportSubmenu,
     CADHY_MT_PieMenu,
     CADHY_OT_CallPieMenu,
     CADHY_OT_QuickExportCFD,
     CADHY_OT_QuickExportReport,
     # Panels
-    CADHY_PT_Main,
-    CADHY_PT_ChannelInfo,
-    CADHY_PT_CFD,
-    CADHY_PT_Sections,
-    CADHY_PT_Export,
-    CADHY_PT_Render,
-    CADHY_PT_Updates,
+    CADHY_PT_Unified,  # Main consolidated panel
+    CADHY_PT_Updates,  # Separate updates panel (at bottom)
 )
 
 
