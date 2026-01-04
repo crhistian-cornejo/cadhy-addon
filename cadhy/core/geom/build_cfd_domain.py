@@ -24,20 +24,21 @@ def generate_cfd_section_vertices(channel_params: ChannelParams) -> List[Tuple[f
     Returns:
         List of (x, y) tuples for fluid section profile
     """
-    # Always use full height (design water depth = channel height)
-    water_height = channel_params.height  # Not total_height, just the flow depth
+    # Use full channel height (height + freeboard) to fill entire channel volume
+    # This ensures CFD domain matches the physical channel completely
+    total_height = channel_params.height + channel_params.freeboard
 
     if channel_params.section_type == SectionType.TRAPEZOIDAL:
         bw = channel_params.bottom_width
         ss = channel_params.side_slope
-        tw = bw + 2 * ss * water_height
+        tw = bw + 2 * ss * total_height
 
         # Fluid profile (closed, counterclockwise)
         return [
             (-bw / 2, 0),
             (bw / 2, 0),
-            (tw / 2, water_height),
-            (-tw / 2, water_height),
+            (tw / 2, total_height),
+            (-tw / 2, total_height),
         ]
 
     elif channel_params.section_type == SectionType.RECTANGULAR:
@@ -45,19 +46,46 @@ def generate_cfd_section_vertices(channel_params: ChannelParams) -> List[Tuple[f
         return [
             (-bw / 2, 0),
             (bw / 2, 0),
-            (bw / 2, water_height),
-            (-bw / 2, water_height),
+            (bw / 2, total_height),
+            (-bw / 2, total_height),
+        ]
+
+    elif channel_params.section_type == SectionType.TRIANGULAR:
+        # Triangular/V-channel section
+        ss = channel_params.side_slope
+        tw = 2 * ss * total_height  # Top width based on side slope
+
+        return [
+            (0, 0),  # Bottom vertex (point)
+            (tw / 2, total_height),
+            (-tw / 2, total_height),
         ]
 
     elif channel_params.section_type == SectionType.CIRCULAR:
+        # Open circular channel (half-pipe) - use diameter
         r = channel_params.bottom_width / 2
+        segments = 32
+        # Half circle for open channel
+        verts = []
+        for i in range(segments + 1):
+            angle = math.pi + (math.pi * i / segments)
+            x = r * math.cos(angle)
+            y = r * math.sin(angle) + r
+            verts.append((x, y))
+        return verts
+
+    elif channel_params.section_type == SectionType.PIPE:
+        # Closed pipe - use inner diameter for flow
+        outer_r = channel_params.bottom_width / 2
+        wall_thickness = channel_params.lining_thickness
+        inner_r = outer_r - wall_thickness
         segments = 32
         # Full circle for pipe flow
         verts = []
         for i in range(segments):
             angle = 2 * math.pi * i / segments
-            x = r * math.cos(angle)
-            y = r * math.sin(angle) + r
+            x = inner_r * math.cos(angle)
+            y = inner_r * math.sin(angle) + outer_r  # Center at pipe center
             verts.append((x, y))
         return verts
 
@@ -145,17 +173,23 @@ def build_cfd_domain_mesh(
             faces.append((v1, v2, v3, v4))
 
             # Classify face by patch
-            if channel_params.section_type != SectionType.CIRCULAR:
-                # For trap/rect: bottom (j=0), left wall (j=3->0), right wall (j=1->2), top (j=2->3)
+            if channel_params.section_type in (SectionType.CIRCULAR, SectionType.PIPE):
+                # Circular/Pipe: all walls
+                patch_faces[PatchType.WALLS.value].append(face_idx)
+            elif channel_params.section_type == SectionType.TRIANGULAR:
+                # Triangular: no bottom, just sloped walls and top
+                if j == num_section_verts - 1:
+                    patch_faces[PatchType.TOP.value].append(face_idx)
+                else:
+                    patch_faces[PatchType.WALLS.value].append(face_idx)
+            else:
+                # For trap/rect: bottom (j=0), walls, top (last)
                 if j == 0:
                     patch_faces[PatchType.BOTTOM.value].append(face_idx)
                 elif j == num_section_verts - 1:
                     patch_faces[PatchType.TOP.value].append(face_idx)
                 else:
                     patch_faces[PatchType.WALLS.value].append(face_idx)
-            else:
-                # Circular: all walls
-                patch_faces[PatchType.WALLS.value].append(face_idx)
 
             face_idx += 1
 

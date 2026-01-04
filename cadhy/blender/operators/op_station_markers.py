@@ -74,10 +74,32 @@ class CADHY_OT_CreateStationMarkers(Operator):
             self.report({"ERROR"}, "Failed to sample curve")
             return {"CANCELLED"}
 
-        # Create markers
+        # Get channel height for proper offset
+        channel_height = settings.height + settings.freeboard if hasattr(settings, "height") else 2.5
+
+        # Track created stations to avoid duplicates
+        created_stations = set()
+
+        # Create markers (skip first and last which will have inlet/outlet)
         marker_count = 0
-        for sample in samples:
+        import math
+
+        for i, sample in enumerate(samples):
             station = sample["station"]
+
+            # Round to avoid floating point issues
+            station_key = round(station, 2)
+
+            # Skip if already created (duplicate prevention)
+            if station_key in created_stations:
+                continue
+
+            # Skip first and last (will be inlet/outlet)
+            if i == 0 or i == len(samples) - 1:
+                continue
+
+            created_stations.add(station_key)
+
             pos = sample["position"]
             normal = sample["normal"]
 
@@ -100,13 +122,12 @@ class CADHY_OT_CreateStationMarkers(Operator):
             text_obj = bpy.data.objects.new(text_name, font_curve)
             collection.objects.link(text_obj)
 
-            # Position at sample point, offset upward by normal
-            offset_height = 0.5  # meters above the point
+            # Position ABOVE the channel (height + offset)
+            offset_height = channel_height + 1.0  # Above the channel top
             text_obj.location = pos + normal * offset_height
 
             # Rotate to face up and align with curve direction
             tangent = sample["tangent"]
-            import math
 
             # Make text face upward (90 degrees on X)
             text_obj.rotation_euler = (1.5708, 0, 0)
@@ -117,24 +138,40 @@ class CADHY_OT_CreateStationMarkers(Operator):
 
             marker_count += 1
 
-        # Also mark inlet and outlet
+        # Create inlet and outlet markers (with station format above)
         if len(samples) >= 2:
-            self._create_endpoint_marker(collection, axis_obj, samples[0], "INLET", curve_length)
-            self._create_endpoint_marker(collection, axis_obj, samples[-1], "OUTLET", curve_length)
+            self._create_endpoint_marker(collection, axis_obj, samples[0], "INLET", curve_length, channel_height)
+            self._create_endpoint_marker(collection, axis_obj, samples[-1], "OUTLET", curve_length, channel_height)
 
         self.report({"INFO"}, f"Created {marker_count} station markers")
         return {"FINISHED"}
 
-    def _create_endpoint_marker(self, collection, axis_obj, sample, label, curve_length):
-        """Create inlet/outlet endpoint marker."""
+    def _create_endpoint_marker(self, collection, axis_obj, sample, label, curve_length, channel_height):
+        """Create inlet/outlet endpoint marker with station text above."""
+        import math
+
         pos = sample["position"]
         normal = sample["normal"]
+        tangent = sample["tangent"]
+        station = sample["station"]
+
+        # Format station as 0+000.00 (km+meters)
+        km = int(station / 1000)
+        m = station % 1000
+        station_text = f"{km}+{m:06.2f}"
+
+        # Combined text: label + station
+        combined_text = f"{label}\n{station_text}"
 
         text_name = f"Station_{axis_obj.name}_{label}"
 
+        # Check if already exists and remove
+        if text_name in bpy.data.objects:
+            bpy.data.objects.remove(bpy.data.objects[text_name], do_unlink=True)
+
         # Create font curve
         font_curve = bpy.data.curves.new(name=text_name, type="FONT")
-        font_curve.body = label
+        font_curve.body = combined_text
         font_curve.size = max(0.8, curve_length / 80)
         font_curve.align_x = "CENTER"
         font_curve.align_y = "BOTTOM"
@@ -143,17 +180,13 @@ class CADHY_OT_CreateStationMarkers(Operator):
         text_obj = bpy.data.objects.new(text_name, font_curve)
         collection.objects.link(text_obj)
 
-        # Position offset from endpoint
-        tangent = sample["tangent"]
-        offset_dir = -tangent if label == "INLET" else tangent
-        offset_height = 1.0
+        # Position ABOVE the channel (height + offset)
+        offset_height = channel_height + 1.5  # Higher than regular stations
 
-        text_obj.location = pos + normal * offset_height + offset_dir * 0.5
+        text_obj.location = pos + normal * offset_height
 
         # Rotate to face up
         text_obj.rotation_euler = (1.5708, 0, 0)
-
-        import math
 
         angle_z = math.atan2(tangent.y, tangent.x)
         text_obj.rotation_euler.z = angle_z + math.pi / 2

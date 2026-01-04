@@ -179,19 +179,47 @@ class CADHY_PT_Main(Panel):
 
         col = box.column(align=True)
 
-        if section_type == "CIRC":
+        # Different UI based on section type
+        if section_type == "PIPE":
+            # Pipe-specific UI with commercial diameters
+            col.label(text="Commercial Pipe", icon="MESH_CYLINDER")
+            col.prop(source, "pipe_material", text="Material")
+            col.prop(source, "pipe_diameter", text="Diameter")
+
+            # Show SDR or Schedule based on material
+            if hasattr(source, "pipe_material"):
+                if source.pipe_material == "HDPE":
+                    col.prop(source, "pipe_sdr", text="SDR")
+                elif source.pipe_material == "PVC":
+                    col.prop(source, "pipe_schedule", text="Schedule")
+
+            # Show calculated wall thickness and inner diameter
+            col.separator()
+            col.label(text="(Wall thickness from standards)")
+
+        elif section_type == "CIRC":
             col.prop(source, "bottom_width", text="Diameter")
+        elif section_type == "TRI":
+            # Triangular - no bottom width, just side slope
+            col.prop(source, "side_slope", text="Side Slope (H:V)")
         else:
             col.prop(source, "bottom_width", text="Bottom Width")
 
+        # Side slope for trapezoidal and triangular
         if section_type == "TRAP":
             col.prop(source, "side_slope", text="Side Slope (H:V)")
 
-        col.prop(source, "height", text="Height")
-        col.prop(source, "freeboard", text="Freeboard")
+        # Height and freeboard for open channels only
+        if section_type not in ("PIPE", "CIRC"):
+            col.prop(source, "height", text="Height")
+            col.prop(source, "freeboard", text="Freeboard")
 
         col.separator()
-        col.prop(source, "lining_thickness", text="Lining Thickness")
+
+        # Lining thickness (wall thickness for pipes is automatic)
+        if section_type != "PIPE":
+            col.prop(source, "lining_thickness", text="Lining Thickness")
+
         col.prop(source, "resolution_m", text="Resolution (m)")
 
         # Profile subdivision options
@@ -200,12 +228,17 @@ class CADHY_PT_Main(Panel):
         if getattr(source, "subdivide_profile", True):
             col.prop(source, "profile_resolution", text="Profile Resolution (m)")
 
-        # Calculated values for trapezoidal
+        # Calculated values display
+        box.separator()
+        sub = box.column(align=True)
+
         if section_type == "TRAP":
             total_height = source.height + source.freeboard
             top_width = source.bottom_width + 2 * source.side_slope * total_height
-
-            box.separator()
-            sub = box.column(align=True)
+            sub.label(text=f"Top Width: {top_width:.2f} m")
+            sub.label(text=f"Total Height: {total_height:.2f} m")
+        elif section_type == "TRI":
+            total_height = source.height + source.freeboard
+            top_width = 2 * source.side_slope * total_height
             sub.label(text=f"Top Width: {top_width:.2f} m")
             sub.label(text=f"Total Height: {total_height:.2f} m")

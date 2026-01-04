@@ -546,6 +546,56 @@ def generate_section_vertices_with_lining(
 
         return inner, []
 
+    elif params.section_type == SectionType.TRIANGULAR:
+        # V-channel / triangular section
+        ss = params.side_slope
+        tw = 2 * ss * h  # Top width based on side slope
+
+        # Inner profile: apex at bottom, expands upward
+        # Profile order: BL -> apex -> BR -> TR -> TL
+        # Simplified to 3 vertices: apex (bottom), top-right, top-left
+        inner_base = [
+            (0, 0),  # Apex (bottom point)
+            (tw / 2, h),  # Top right
+            (-tw / 2, h),  # Top left
+        ]
+
+        if subdivide and max_edge > 0:
+            # Subdivide edges
+            inner = []
+            # Edge: apex -> TR (right slope)
+            edge0 = subdivide_profile_edge(inner_base[0], inner_base[1], max_edge)
+            inner.extend(edge0[:-1])
+            # Top vertices
+            inner.append(inner_base[1])  # TR
+            inner.append(inner_base[2])  # TL
+        else:
+            inner = inner_base
+
+        if lt > 0:
+            # Outer profile offset
+            slope_length = math.sqrt(h * h + (ss * h) ** 2)
+            wall_offset = lt * slope_length / h if h > 0 else lt
+
+            outer_base = [
+                (0, -lt),  # Apex offset down
+                (tw / 2 + wall_offset, h),  # Top right offset
+                (-tw / 2 - wall_offset, h),  # Top left offset
+            ]
+
+            if subdivide and max_edge > 0:
+                outer = []
+                edge0 = subdivide_profile_edge(outer_base[0], outer_base[1], max_edge)
+                outer.extend(edge0[:-1])
+                outer.append(outer_base[1])
+                outer.append(outer_base[2])
+            else:
+                outer = outer_base
+
+            return inner, outer
+
+        return inner, []
+
     elif params.section_type == SectionType.CIRCULAR:
         r = params.bottom_width / 2
         # For circular, calculate segments based on resolution
@@ -573,6 +623,37 @@ def generate_section_vertices_with_lining(
             return inner, outer
 
         return inner, []
+
+    elif params.section_type == SectionType.PIPE:
+        # Commercial pipe: full circle with wall thickness
+        # bottom_width is outer diameter, lining_thickness is wall thickness
+        outer_r = params.bottom_width / 2
+        inner_r = outer_r - lt  # Inner radius (flow area)
+
+        # For pipes, calculate segments based on resolution
+        if subdivide and max_edge > 0:
+            circumference = 2 * math.pi * outer_r
+            segments = max(24, int(circumference / max_edge))
+        else:
+            segments = 32
+
+        # Inner surface (flow boundary) - full circle
+        inner = []
+        for i in range(segments):
+            angle = 2 * math.pi * i / segments
+            x = inner_r * math.cos(angle)
+            y = inner_r * math.sin(angle) + outer_r  # Center at outer_r height
+            inner.append((x, y))
+
+        # Outer surface (pipe exterior)
+        outer = []
+        for i in range(segments):
+            angle = 2 * math.pi * i / segments
+            x = outer_r * math.cos(angle)
+            y = outer_r * math.sin(angle) + outer_r
+            outer.append((x, y))
+
+        return inner, outer
 
     return [], []
 
@@ -647,6 +728,35 @@ def _get_profile_edge_ranges(params: ChannelParams, num_verts: int) -> dict:
             "top_left": right_wall_end + 1,  # TL index (last vertex)
         }
 
+    elif params.section_type == SectionType.TRIANGULAR:
+        # Triangular: apex -> TR -> TL (3 vertices base, possibly subdivided)
+        h = params.total_height
+        ss = params.side_slope
+        subdivide = getattr(params, "subdivide_profile", True)
+        max_edge = getattr(params, "profile_resolution", params.resolution_m)
+
+        slope_length = math.sqrt(h * h + (ss * h) ** 2)
+
+        if subdivide and max_edge > 0:
+            slope_subdivs = max(1, math.ceil(slope_length / max_edge))
+        else:
+            slope_subdivs = 1
+
+        # Profile: apex(0) -> ... -> TR -> TL
+        right_slope_end = slope_subdivs  # apex to TR
+        tr_idx = right_slope_end
+        tl_idx = right_slope_end + 1
+
+        return {
+            "triangular": True,
+            "right_slope": (0, right_slope_end),  # apex to TR
+            "top_right": tr_idx,
+            "top_left": tl_idx,
+        }
+
+    elif params.section_type in (SectionType.CIRCULAR, SectionType.PIPE):
+        return {"circular": True, "count": num_verts}
+
     return {"circular": True, "count": num_verts}
 
 
@@ -712,7 +822,7 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
     num_samples = len(samples)
 
     # Determine face generation based on section type
-    is_open_channel = params.section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR)
+    is_open_channel = params.section_type in (SectionType.TRAPEZOIDAL, SectionType.RECTANGULAR, SectionType.TRIANGULAR)
 
     # For cyclic curves, we loop back to connect last section to first
     num_connections = num_samples if is_cyclic else num_samples - 1
@@ -729,103 +839,183 @@ def build_channel_mesh(curve_obj, params: ChannelParams) -> Tuple[List[Vector], 
             # OPEN CHANNEL with subdivided profile
             # Generate faces for each edge of the profile
 
-            bottom_start, bottom_end = edge_info["bottom"]
-            right_start, right_end = edge_info["right_wall"]
-            tr_idx = edge_info["top_right"]
-            tl_idx = edge_info["top_left"]
+            if params.section_type == SectionType.TRIANGULAR:
+                # Triangular: apex(0) -> ... -> TR -> TL
+                right_start, right_end = edge_info["right_slope"]
+                tr_idx = edge_info["top_right"]
+                tl_idx = edge_info["top_left"]
 
-            # Bottom surface (from BL to BR)
-            for j in range(bottom_start, bottom_end):
-                j_next = j + 1
-                v1 = base_current + j
-                v2 = base_current + j_next
-                v3 = base_next + j_next
-                v4 = base_next + j
-                faces.append((v1, v2, v3, v4))
-
-            # Right wall (from BR to TR)
-            for j in range(right_start, right_end):
-                j_next = j + 1
-                v1 = base_current + j
-                v2 = base_current + j_next
-                v3 = base_next + j_next
-                v4 = base_next + j
-                faces.append((v1, v2, v3, v4))
-
-            # Left wall (from TL to BL) - reversed direction
-            # TL -> BL means we go from tl_idx back to 0
-            v1 = base_current + tl_idx
-            v2 = base_current + 0  # BL
-            v3 = base_next + 0  # BL next
-            v4 = base_next + tl_idx
-            faces.append((v1, v2, v3, v4))
-
-            if has_lining:
-                outer_offset = num_inner_verts
-
-                # Outer bottom surface
-                for j in range(bottom_start, bottom_end):
-                    j_next = j + 1
-                    # Reverse winding for outward normals
-                    v1 = base_current + outer_offset + j
-                    v2 = base_next + outer_offset + j
-                    v3 = base_next + outer_offset + j_next
-                    v4 = base_current + outer_offset + j_next
-                    faces.append((v1, v2, v3, v4))
-
-                # Outer right wall
+                # Right slope (from apex to TR)
                 for j in range(right_start, right_end):
                     j_next = j + 1
-                    v1 = base_current + outer_offset + j
-                    v2 = base_next + outer_offset + j
-                    v3 = base_next + outer_offset + j_next
-                    v4 = base_current + outer_offset + j_next
+                    v1 = base_current + j
+                    v2 = base_current + j_next
+                    v3 = base_next + j_next
+                    v4 = base_next + j
                     faces.append((v1, v2, v3, v4))
 
-                # Outer left wall
-                v1 = base_current + outer_offset + tl_idx
-                v2 = base_next + outer_offset + tl_idx
-                v3 = base_next + outer_offset + 0
-                v4 = base_current + outer_offset + 0
-                faces.append((v1, v2, v3, v4))
-
-                # Top edge caps (connect inner top to outer top)
-                # Left cap: inner TL to outer TL
+                # Left slope (from TL back to apex)
                 v1 = base_current + tl_idx
-                v2 = base_next + tl_idx
-                v3 = base_next + outer_offset + tl_idx
-                v4 = base_current + outer_offset + tl_idx
+                v2 = base_current + 0  # apex
+                v3 = base_next + 0  # apex next
+                v4 = base_next + tl_idx
                 faces.append((v1, v2, v3, v4))
 
-                # Right cap: inner TR to outer TR
-                v1 = base_current + outer_offset + tr_idx
-                v2 = base_next + outer_offset + tr_idx
-                v3 = base_next + tr_idx
-                v4 = base_current + tr_idx
-                faces.append((v1, v2, v3, v4))
+            else:
+                # TRAPEZOIDAL / RECTANGULAR
+                bottom_start, bottom_end = edge_info["bottom"]
+                right_start, right_end = edge_info["right_wall"]
+                tr_idx = edge_info["top_right"]
+                tl_idx = edge_info["top_left"]
 
-        else:
-            # CLOSED CHANNEL (circular pipe): wrap around for inner
-            for j in range(num_inner_verts - 1):
-                j_next = j + 1
+                # Bottom surface (from BL to BR)
+                for j in range(bottom_start, bottom_end):
+                    j_next = j + 1
+                    v1 = base_current + j
+                    v2 = base_current + j_next
+                    v3 = base_next + j_next
+                    v4 = base_next + j
+                    faces.append((v1, v2, v3, v4))
 
-                v1 = base_current + j
-                v2 = base_current + j_next
-                v3 = base_next + j_next
-                v4 = base_next + j
+                # Right wall (from BR to TR)
+                for j in range(right_start, right_end):
+                    j_next = j + 1
+                    v1 = base_current + j
+                    v2 = base_current + j_next
+                    v3 = base_next + j_next
+                    v4 = base_next + j
+                    faces.append((v1, v2, v3, v4))
+
+                # Left wall (from TL to BL) - reversed direction
+                # TL -> BL means we go from tl_idx back to 0
+                v1 = base_current + tl_idx
+                v2 = base_current + 0  # BL
+                v3 = base_next + 0  # BL next
+                v4 = base_next + tl_idx
                 faces.append((v1, v2, v3, v4))
 
             if has_lining:
-                # Outer surface for circular
                 outer_offset = num_inner_verts
-                for j in range(num_outer_verts - 1):
+
+                if params.section_type == SectionType.TRIANGULAR:
+                    # Triangular lining - outer right slope
+                    for j in range(right_start, right_end):
+                        j_next = j + 1
+                        v1 = base_current + outer_offset + j
+                        v2 = base_next + outer_offset + j
+                        v3 = base_next + outer_offset + j_next
+                        v4 = base_current + outer_offset + j_next
+                        faces.append((v1, v2, v3, v4))
+
+                    # Outer left slope
+                    v1 = base_current + outer_offset + tl_idx
+                    v2 = base_next + outer_offset + tl_idx
+                    v3 = base_next + outer_offset + 0
+                    v4 = base_current + outer_offset + 0
+                    faces.append((v1, v2, v3, v4))
+
+                    # Top edge caps
+                    v1 = base_current + tl_idx
+                    v2 = base_next + tl_idx
+                    v3 = base_next + outer_offset + tl_idx
+                    v4 = base_current + outer_offset + tl_idx
+                    faces.append((v1, v2, v3, v4))
+
+                    v1 = base_current + outer_offset + tr_idx
+                    v2 = base_next + outer_offset + tr_idx
+                    v3 = base_next + tr_idx
+                    v4 = base_current + tr_idx
+                    faces.append((v1, v2, v3, v4))
+
+                else:
+                    # TRAPEZOIDAL / RECTANGULAR lining
+                    # Outer bottom surface
+                    for j in range(bottom_start, bottom_end):
+                        j_next = j + 1
+                        # Reverse winding for outward normals
+                        v1 = base_current + outer_offset + j
+                        v2 = base_next + outer_offset + j
+                        v3 = base_next + outer_offset + j_next
+                        v4 = base_current + outer_offset + j_next
+                        faces.append((v1, v2, v3, v4))
+
+                    # Outer right wall
+                    for j in range(right_start, right_end):
+                        j_next = j + 1
+                        v1 = base_current + outer_offset + j
+                        v2 = base_next + outer_offset + j
+                        v3 = base_next + outer_offset + j_next
+                        v4 = base_current + outer_offset + j_next
+                        faces.append((v1, v2, v3, v4))
+
+                    # Outer left wall
+                    v1 = base_current + outer_offset + tl_idx
+                    v2 = base_next + outer_offset + tl_idx
+                    v3 = base_next + outer_offset + 0
+                    v4 = base_current + outer_offset + 0
+                    faces.append((v1, v2, v3, v4))
+
+                    # Top edge caps (connect inner top to outer top)
+                    # Left cap: inner TL to outer TL
+                    v1 = base_current + tl_idx
+                    v2 = base_next + tl_idx
+                    v3 = base_next + outer_offset + tl_idx
+                    v4 = base_current + outer_offset + tl_idx
+                    faces.append((v1, v2, v3, v4))
+
+                    # Right cap: inner TR to outer TR
+                    v1 = base_current + outer_offset + tr_idx
+                    v2 = base_next + outer_offset + tr_idx
+                    v3 = base_next + tr_idx
+                    v4 = base_current + tr_idx
+                    faces.append((v1, v2, v3, v4))
+
+        else:
+            # CLOSED CHANNEL (circular/pipe): wrap around for inner
+            is_full_circle = params.section_type == SectionType.PIPE
+
+            if is_full_circle:
+                # Full circle - wrap around (last vertex connects to first)
+                for j in range(num_inner_verts):
+                    j_next = (j + 1) % num_inner_verts
+
+                    v1 = base_current + j
+                    v2 = base_current + j_next
+                    v3 = base_next + j_next
+                    v4 = base_next + j
+                    faces.append((v1, v2, v3, v4))
+
+                if has_lining:
+                    outer_offset = num_inner_verts
+                    for j in range(num_outer_verts):
+                        j_next = (j + 1) % num_outer_verts
+
+                        v1 = base_current + outer_offset + j
+                        v2 = base_next + outer_offset + j
+                        v3 = base_next + outer_offset + j_next
+                        v4 = base_current + outer_offset + j_next
+                        faces.append((v1, v2, v3, v4))
+            else:
+                # Half circle (open circular channel) - don't wrap
+                for j in range(num_inner_verts - 1):
                     j_next = j + 1
 
-                    v1 = base_current + outer_offset + j
-                    v2 = base_next + outer_offset + j
-                    v3 = base_next + outer_offset + j_next
-                    v4 = base_current + outer_offset + j_next
+                    v1 = base_current + j
+                    v2 = base_current + j_next
+                    v3 = base_next + j_next
+                    v4 = base_next + j
                     faces.append((v1, v2, v3, v4))
+
+                if has_lining:
+                    outer_offset = num_inner_verts
+                    for j in range(num_outer_verts - 1):
+                        j_next = j + 1
+
+                        v1 = base_current + outer_offset + j
+                        v2 = base_next + outer_offset + j
+                        v3 = base_next + outer_offset + j_next
+                        v4 = base_current + outer_offset + j_next
+                        faces.append((v1, v2, v3, v4))
 
     # Add end caps for lining (close the start and end of the channel)
     # Skip end caps for cyclic curves - they form a complete loop

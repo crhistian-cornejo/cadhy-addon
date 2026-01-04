@@ -68,9 +68,11 @@ class CADHYSceneSettings(PropertyGroup):
         name="Section Type",
         description="Type of hydraulic section",
         items=[
-            ("TRAP", "Trapezoidal", "Trapezoidal section"),
-            ("RECT", "Rectangular", "Rectangular section"),
-            ("CIRC", "Circular", "Circular section"),
+            ("TRAP", "Trapezoidal", "Trapezoidal section with sloped sides"),
+            ("RECT", "Rectangular", "Rectangular section with vertical walls"),
+            ("TRI", "Triangular", "V-channel / triangular section"),
+            ("CIRC", "Circular", "Open circular channel (half-pipe)"),
+            ("PIPE", "Pipe", "Closed commercial pipe with wall thickness"),
         ],
         default="TRAP",
     )
@@ -112,12 +114,64 @@ class CADHYSceneSettings(PropertyGroup):
 
     lining_thickness: FloatProperty(
         name="Lining Thickness",
-        description="Thickness of channel lining",
+        description="Thickness of channel lining (or wall thickness for pipes)",
         default=0.15,
         min=0.0,
         max=2.0,
         unit="LENGTH",
         subtype="DISTANCE",
+    )
+
+    # Pipe-specific parameters
+    pipe_material: EnumProperty(
+        name="Pipe Material",
+        description="Commercial pipe material type",
+        items=[
+            ("HDPE", "HDPE PE100", "High-density polyethylene PE100"),
+            ("PVC", "PVC", "Polyvinyl chloride"),
+            ("CONCRETE", "Concrete", "Reinforced concrete pipe"),
+        ],
+        default="HDPE",
+    )
+
+    pipe_diameter: EnumProperty(
+        name="Nominal Diameter",
+        description="Nominal pipe diameter",
+        items=[
+            # HDPE common sizes (mm)
+            ("110", "DN 110 mm", "110 mm nominal diameter"),
+            ("160", "DN 160 mm", "160 mm nominal diameter"),
+            ("200", "DN 200 mm", "200 mm nominal diameter"),
+            ("250", "DN 250 mm", "250 mm nominal diameter"),
+            ("315", "DN 315 mm", "315 mm nominal diameter"),
+            ("400", "DN 400 mm", "400 mm nominal diameter"),
+            ("500", "DN 500 mm", "500 mm nominal diameter"),
+            ("630", "DN 630 mm", "630 mm nominal diameter"),
+            ("800", "DN 800 mm", "800 mm nominal diameter"),
+            ("1000", "DN 1000 mm", "1000 mm nominal diameter"),
+            ("1200", "DN 1200 mm", "1200 mm nominal diameter"),
+        ],
+        default="315",
+    )
+
+    pipe_sdr: EnumProperty(
+        name="SDR",
+        description="Standard Dimension Ratio (for HDPE)",
+        items=[
+            ("11", "SDR 11", "PN 16 bar pressure rating"),
+            ("17", "SDR 17", "PN 10 bar pressure rating"),
+        ],
+        default="11",
+    )
+
+    pipe_schedule: EnumProperty(
+        name="Schedule",
+        description="Pipe schedule (for PVC)",
+        items=[
+            ("SCH40", "Schedule 40", "Standard wall thickness"),
+            ("SCH80", "Schedule 80", "Extra heavy wall thickness"),
+        ],
+        default="SCH40",
     )
 
     resolution_m: FloatProperty(

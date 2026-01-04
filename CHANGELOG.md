@@ -5,6 +5,51 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [0.3.5] - 2026-01-03
+
+### Added
+
+- **Triangular Section Type**: V-channel / triangular cross-section
+  - Apex at bottom with configurable side slope
+  - Full geometry and CFD domain support
+  - Lining thickness support
+
+- **Commercial Pipe Section Type**: Closed pipe with industry-standard dimensions
+  - HDPE PE100 pipes (DN 110mm - 1200mm) with SDR 11/17
+  - PVC pipes (2" - 24") with Schedule 40/80
+  - Concrete pipes (DN 300mm - 2400mm)
+  - Automatic wall thickness from standards
+  - Full circle geometry for pressurized flow
+
+- **Pipe Material Database**: Real commercial pipe specifications
+  - Wall thickness calculated from SDR/Schedule
+  - Inner diameter computed automatically
+  - Standard nominal diameters
+
+### Changed
+
+- **CFD Domain Height**: Now uses full channel height (height + freeboard)
+  - Previously only used design height, leaving gap at top
+  - Ensures complete CFD simulation domain
+
+- **Station Markers Position**: Text now positioned ABOVE the channel
+  - Height offset based on channel height + freeboard
+  - Inlet/Outlet markers include station text (e.g., "INLET\n0+000.00")
+  - Duplicate station markers prevented
+
+- **UI Section Parameters**: Dynamic display based on section type
+  - Pipe mode shows material, diameter, SDR/Schedule
+  - Triangular mode shows only side slope (no bottom width)
+  - Calculated values display for each section type
+
+### Fixed
+
+- CFD domain not filling entire channel volume (freeboard gap)
+- Station marker duplicates at curve endpoints
+- Station text positioning below channel surface
+
+---
+
 ## [0.3.4] - 2026-01-03
 
 ### Added

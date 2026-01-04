@@ -31,9 +31,11 @@ class CADHYChannelSettings(PropertyGroup):
         name="Section Type",
         description="Type of hydraulic section",
         items=[
-            ("TRAP", "Trapezoidal", "Trapezoidal section"),
-            ("RECT", "Rectangular", "Rectangular section"),
-            ("CIRC", "Circular", "Circular section"),
+            ("TRAP", "Trapezoidal", "Trapezoidal section with sloped sides"),
+            ("RECT", "Rectangular", "Rectangular section with vertical walls"),
+            ("TRI", "Triangular", "V-channel / triangular section"),
+            ("CIRC", "Circular", "Open circular channel (half-pipe)"),
+            ("PIPE", "Pipe", "Closed commercial pipe with wall thickness"),
         ],
         default="TRAP",
     )
@@ -60,11 +62,40 @@ class CADHYChannelSettings(PropertyGroup):
 
     lining_thickness: FloatProperty(
         name="Lining Thickness",
-        description="Thickness of channel lining",
+        description="Thickness of channel lining (or wall thickness for pipes)",
         default=0.15,
         min=0.0,
         max=2.0,
         unit="LENGTH",
+    )
+
+    # Pipe-specific parameters
+    pipe_material: StringProperty(
+        name="Pipe Material",
+        description="Commercial pipe material type",
+        default="HDPE",
+    )
+
+    pipe_diameter_mm: FloatProperty(
+        name="Nominal Diameter (mm)",
+        description="Nominal pipe diameter in millimeters",
+        default=315.0,
+        min=50.0,
+        max=2500.0,
+    )
+
+    pipe_sdr: IntProperty(
+        name="SDR",
+        description="Standard Dimension Ratio",
+        default=11,
+        min=7,
+        max=41,
+    )
+
+    pipe_schedule: StringProperty(
+        name="Schedule",
+        description="Pipe schedule (for PVC)",
+        default="SCH40",
     )
 
     resolution_m: FloatProperty(
